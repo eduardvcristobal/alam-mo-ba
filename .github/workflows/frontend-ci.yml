@@ -1,4 +1,4 @@
-name: M1.1 Frontend Verification
+name: M1.3 Admin Frontend Verification
 on:
   push:
     branches: [main, 'feature/**']
