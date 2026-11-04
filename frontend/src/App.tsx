@@ -54,7 +54,7 @@ export default function App(){
   if(action==='repeat'&&play){setPlay({...play,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',historyIds:play.items.map(q=>q.id)});return;}
   const previous=play?.historyIds||[];
   const sample=chooseQuestions(quizPool,prefs.count,previous);
-  const live=shuffled(questions).slice(0,Math.min(prefs.count,questions.length));
+  const fresh=shuffled(questions.filter(q=>!previous.includes(q.id)));const recycled=shuffled(questions.filter(q=>previous.includes(q.id)));const live=[...fresh,...recycled].slice(0,Math.min(prefs.count,questions.length));
   if(live.length){
    setPlay({kind:'api',type,items:[],apiItems:live,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',historyIds:live.map(x=>x.id)});
   }else{
