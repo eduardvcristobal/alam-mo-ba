@@ -6,7 +6,7 @@ test('pre-provisioned administrator uses nonce-bound Google login to access dash
  await page.evaluate(()=>{
   let onCredential:(credential:{credential:string})=>void=()=>{};
   Object.assign(window,{google:{accounts:{id:{
-   initialize:(data:{callback:(credential:{credential:string})=>void})=>void)=>{onCredential=data.callback;},
+   initialize:(data:{callback:(credential:{credential:string})=>void})=>{onCredential=data.callback;},
    renderButton:(element:HTMLElement)=>{
     const button=document.createElement('button');
     button.textContent='Mock Google admin';
