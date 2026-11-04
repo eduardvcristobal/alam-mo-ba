@@ -1,6 +1,7 @@
 import type {QuizCandidate} from '../lib/quiz';
+import {extendedSampleFacts} from './extendedSample';
 export type SampleFact={id:number;grade:number;subject:string;emoji:string;en:string;fil:string;quiz?:QuizCandidate;filQuestion?:string;filChoices?:string[];filExplanation?:string};
-export const sampleFacts:SampleFact[]=[
+const coreSampleFacts:SampleFact[]=[
 {id:1,grade:7,subject:'Science',emoji:'🧊',en:'Ice takes up about 9% more space than the water it freezes from, which is why it floats.',fil:'Lumalaki nang halos 9% ang espasyo ng tubig kapag nagyeyelo, kaya lumulutang ang yelo.',quiz:{id:1,question:'Why does ice float on liquid water?',choices:['It is less dense than liquid water','It is heavier than liquid water','The wind keeps it up'],correctIndex:0,explanation:'Freezing creates an open molecular structure, lowering water’s density.'}},
 {id:2,grade:7,subject:'AP',emoji:'🏝️',en:'The Philippines has 7,641 islands, according to NAMRIA.',fil:'May 7,641 isla ang Pilipinas, ayon sa NAMRIA.',quiz:{id:2,question:'About how many islands are in the Philippines?',choices:['More than 7,000','About 1,100','More than 17,000'],correctIndex:0,explanation:'NAMRIA identifies 7,641 islands.'}},
 {id:3,grade:7,subject:'MAPEH',emoji:'🪶',en:'Tinikling is a Philippine dance inspired by the tikling bird.',fil:'Ang tinikling ay sayaw na hango sa ibong tikling.',quiz:{id:3,question:'What inspired the Tinikling dance?',choices:['Movements of the tikling bird','Ocean waves','Planting rice'],correctIndex:0,explanation:'The movements resemble a bird moving between bamboo poles.'}},
@@ -10,7 +11,5 @@ export const sampleFacts:SampleFact[]=[
 {id:7,grade:9,subject:'Science',emoji:'🧬',en:'Any two people share about 99.9% of their DNA sequence.',fil:'Halos 99.9% ng DNA sequence ng dalawang tao ay magkapareho.',quiz:{id:7,question:'Approximately how much DNA sequence do two people share?',choices:['99.9%','75%','50%'],correctIndex:0,explanation:'Human genomes are highly similar in their DNA sequence.'}},
 {id:8,grade:9,subject:'Math',emoji:'🔢',en:'Pi is irrational: its decimal digits never terminate or repeat in a fixed cycle.',fil:'Ang pi ay irasyonal: hindi nagtatapos o umuulit nang paikot ang desimal nito.',quiz:{id:8,question:'Which statement about pi is true?',choices:['It is irrational','It equals exactly 22/7','Its decimals stop after ten digits'],correctIndex:0,explanation:'22/7 is only an approximation of pi.'}},
 {id:9,grade:9,subject:'TLE',emoji:'💻',en:'Ray Tomlinson used the @ symbol in early network email addresses in 1971.',fil:'Ginamit ni Ray Tomlinson ang @ sa mga unang network email address noong 1971.',quiz:{id:9,question:'Which symbol separates a user name from a domain in email?',choices:['@','#','&'],correctIndex:0,explanation:'The @ symbol indicates the user at a particular host or domain.'}},
-{id:10,grade:7,subject:'Science',emoji:'🐙',en:'An octopus has three hearts and blue blood.',fil:'Ang pugita ay may tatlong puso at asul na dugo.'},
-{id:11,grade:8,subject:'Science',emoji:'☀️',en:'Sunlight takes about eight minutes to reach Earth.',fil:'Umaabot ng halos walong minuto ang sikat ng araw bago makarating sa Daigdig.'},
-{id:12,grade:9,subject:'AP',emoji:'🇵🇭',en:'The Philippines declared independence on June 12, 1898.',fil:'Ipinahayag ang kalayaan ng Pilipinas noong Hunyo 12, 1898.'}
-];
+{id:10,grade:7,subject:'Science',emoji:'🐙',en:'An octopus has three hearts and blue blood.',fil:'Ang pugita ay may tatlong puso at asul na dugo.'}\n];
+export const sampleFacts:SampleFact[]=[...coreSampleFacts,...extendedSampleFacts];
