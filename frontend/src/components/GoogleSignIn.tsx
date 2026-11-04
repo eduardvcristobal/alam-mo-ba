@@ -1,5 +1,5 @@
 import {useRef,useState} from 'react';
-import {accountSession,requestGoogleChallenge,verifyGoogleIdToken,syncAccountProgress,importGuestProgress,logoutAccount} from '../lib/accountSync';
+import {accountSession,requestGoogleChallenge,verifyGoogleIdToken,syncAccountProgress,importGuestProgress,logoutAccount,exportAccount,deleteAccount} from '../lib/accountSync';
 import {guestToken} from '../lib/guestCloud';
 import type {GuestProgress} from '../lib/guestCloud';
 
@@ -74,6 +74,44 @@ export default function GoogleSignIn({progress,onRestore,lang}:{
    setWorking(false);
   }
  }
+ async function syncNow(){
+  if(!session||working)return;
+  setWorking(true);setStatus('');
+  try{
+   const result=await syncAccountProgress(session.token,progress);
+   onRestore(result.state);
+   setStatus(tr('Account progress synchronized.','Naka-sync ang progreso ng account.'));
+  }catch(error){setStatus(error instanceof Error?error.message:'Sync failed');}
+  finally{setWorking(false);}
+ }
+ async function exportNow(){
+  if(!session||working)return;
+  setWorking(true);setStatus('');
+  try{
+   const data=await exportAccount(session.token);
+   const file=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+   const url=URL.createObjectURL(file);
+   const link=document.createElement('a');
+   link.href=url;link.download='alam-mo-ba-account.json';
+   document.body.appendChild(link);link.click();link.remove();
+   URL.revokeObjectURL(url);
+   setStatus(tr('Account data exported.','Nai-export ang data ng account.'));
+  }catch(error){setStatus(error instanceof Error?error.message:'Export failed');}
+  finally{setWorking(false);}
+ }
+ async function eraseAccount(){
+  if(!session||working)return;
+  const answer=window.prompt(tr('Enter DELETE MY ACCOUNT to permanently erase cloud account data.','Ilagay ang DELETE MY ACCOUNT upang tuluyang burahin ang cloud account data.'));
+  if(answer!=='DELETE MY ACCOUNT')return;
+  setWorking(true);setStatus('');
+  try{
+   await deleteAccount(session.token,answer);
+   setSession(null);
+   onRestore({...progress,saved:[],learned:[],attempts:[],streak:0,last:''});
+   setStatus(tr('Account and local learning history deleted.','Nabura ang account at lokal na kasaysayan ng pag-aaral.'));
+  }catch(error){setStatus(error instanceof Error?error.message:'Deletion failed');}
+  finally{setWorking(false);}
+ }
  async function logout(){
   if(!session)return;
   setWorking(true);
@@ -84,7 +122,10 @@ export default function GoogleSignIn({progress,onRestore,lang}:{
  return <section className="panel" aria-label={tr('Optional account','Opsyonal na account')}>
   <h3>🔐 {tr('Optional account sync','Opsyonal na account sync')}</h3>
   {session?<><p>{tr('Account linked for this tab.','Naka-link ang account sa tab na ito.')}</p>
-   <button disabled={working} onClick={()=>void logout()}>{tr('Sign out','Mag-sign out')}</button></>:
+   <button disabled={working} onClick={()=>void syncNow()}>{tr('Sync progress now','I-sync ngayon ang progreso')}</button>
+   <button disabled={working} onClick={()=>void exportNow()}>{tr('Export my account data','I-export ang data ng account')}</button>
+   <button disabled={working} onClick={()=>void logout()}>{tr('Sign out','Mag-sign out')}</button>
+   <button disabled={working} onClick={()=>void eraseAccount()}>{tr('Delete my account and data','Burahin ang account at data')}</button></>:
    <><p className="muted">{tr(
     'Accounts are optional. Registration is intended for adults only until independently reviewed guardian consent is available.',
     'Opsyonal ang account. Para lamang sa matatanda ang registration habang wala pang nasusuring pahintulot ng magulang.'
