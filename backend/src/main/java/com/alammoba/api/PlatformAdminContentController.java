@@ -70,7 +70,7 @@ public class PlatformAdminContentController {
             return item;
         },id);
         if(found.isEmpty())throw missing();
-        Map<String,Object> result=found.get();
+        Map<String,Object> result=found.get(0);
         result.put("translations",db.query("SELECT locale,body FROM content_fact_translation WHERE fact_id=?",
             (rs,n)->Map.of("locale",rs.getString(1),"body",rs.getString(2)),id));
         result.put("audiences",db.query("SELECT audience,grade_level FROM content_fact_audience WHERE fact_id=?",
