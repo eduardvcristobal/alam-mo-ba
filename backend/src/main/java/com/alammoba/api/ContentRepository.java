@@ -51,7 +51,7 @@ public class ContentRepository {
     return out;
   }
   private static final String QUESTION_FILTER=" FROM quiz_question q JOIN content_fact f ON f.id=q.fact_id "
-       +FILTER.replace("WHERE f.status","WHERE q.status='PUBLISHED' AND f.status");
+       +FILTER.replace(" FROM content_fact f WHERE f.status"," WHERE q.status='PUBLISHED' AND f.status");
   public long countQuestions(Filter f){return jdbc.queryForObject("SELECT count(*)"+QUESTION_FILTER,Long.class,args(f));}
   public List<Map<String,Object>> questions(Filter f){
     Object[] params=Arrays.copyOf(args(f),7);params[5]=f.limit;params[6]=f.offset;
