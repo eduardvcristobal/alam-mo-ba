@@ -48,7 +48,11 @@ public class AdminContentController {
         if(limit<1||limit>100||offset<0)throw bad("Invalid pagination");
         return privateResponse(jdbc.query("""
             SELECT f.id,f.canonical_key,f.subject_code,f.emoji,f.status, en.body,fil.body,
-                (SELECT s.source_url FROM content_source s WHERE s.fact_id=f.id ORDER BY s.id LIMIT 1) source_url
+                (SELECT s.source_url FROM content_source s WHERE s.fact_id=f.id ORDER BY s.id LIMIT 1) source_url,
+                (SELECT s.source_title FROM content_source s WHERE s.fact_id=f.id ORDER BY s.id LIMIT 1) source_title,
+                EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='STUDENT') has_student,
+                (SELECT MIN(a.grade_level) FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='STUDENT') grade,
+                EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='EXPLORE') has_explore
             FROM content_fact f
             LEFT JOIN content_fact_translation en ON en.fact_id=f.id AND en.locale='en'
             LEFT JOIN content_fact_translation fil ON fil.fact_id=f.id AND fil.locale='fil'
@@ -58,7 +62,9 @@ public class AdminContentController {
                 out.put("id",rs.getLong(1));out.put("key",rs.getString(2));
                 out.put("subject",rs.getString(3));out.put("emoji",rs.getString(4));
                 out.put("status",rs.getString(5));out.put("en",rs.getString(6));
-                out.put("fil",rs.getString(7));out.put("sourceUrl",rs.getString(8));
+                out.put("fil",rs.getString(7));out.put("sourceUrl",rs.getString(8));out.put("sourceTitle",rs.getString(9));
+                out.put("student",rs.getBoolean(10));out.put("grade",rs.getObject(11));
+                out.put("explore",rs.getBoolean(12));
                 return out;
             },limit,offset));
     }
