@@ -39,9 +39,9 @@ test('super admin can navigate curriculum, learner directory, analytics, setting
  await page.getByRole('button',{name:/Analytics/}).click();
  await expect(page.getByRole('heading',{name:'Aggregate analytics'})).toBeVisible();
  await page.getByRole('button',{name:/Privacy Requests/}).click();
- await expect(page.getByRole('heading',{name:'Privacy requests'})).toBeVisible();
+ await expect(page.locator('.admin-panel').getByRole('heading',{name:'Privacy requests'})).toBeVisible();
  await page.getByRole('button',{name:/Settings/}).click();
- await expect(page.getByRole('heading',{name:'Platform settings'})).toBeVisible();
+ await expect(page.locator('.admin-panel').getByRole('heading',{name:'Platform settings'})).toBeVisible();
  await page.getByRole('button',{name:/Audit Logs/}).click();
  await expect(page.getByRole('heading',{name:'Administrator audit log'})).toBeVisible();
 });
