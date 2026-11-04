@@ -32,7 +32,7 @@ public class AccountIdentityController {
     private final boolean registrationEnabled;
 
     public AccountIdentityController(JdbcTemplate jdbc, GoogleIdentityVerifier verifier,
-         @Value("\${app.account.registration-enabled:false}") boolean registrationEnabled) {
+         @Value("${app.account.registration-enabled:false}") boolean registrationEnabled) {
         this.jdbc=jdbc;
         this.verifier=verifier;
         this.registrationEnabled=registrationEnabled;
