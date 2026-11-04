@@ -103,7 +103,7 @@ public class AccountIdentityController {
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
-    private UUID accountFromHeader(String header) {
+    UUID accountFromHeader(String header) {
         if(header==null || !header.startsWith("Bearer ") ||
            !header.substring(7).matches("[A-Za-z0-9_-]{43}")) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Account token required");
