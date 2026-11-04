@@ -27,6 +27,7 @@ test('pre-provisioned administrator uses nonce-bound Google login to access dash
  });
  await page.route('**/api/v1/admin/**',route=>{
   const url=route.request().url();
+  if(url.includes('/admin/auth/'))return route.fallback();
   const data=url.endsWith('/admin/me')?{accountId:'admin-ci',roles:['CONTENT_ADMIN']}:
    url.endsWith('/admin/overview')?{facts:2,published:1,questions:1,reviews:0}:[];
   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
