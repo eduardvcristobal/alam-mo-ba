@@ -34,7 +34,7 @@ public class AccountPrivacyRequestController {
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
       @RequestBody Request input){
         UUID account=identity.accountFromHeader(bearer);
-        if(input==null||!(input.type().equals("EXPORT")||input.type().equals("DELETE")))
+        if(input==null||input.type()==null||!(input.type().equals("EXPORT")||input.type().equals("DELETE")))
             throw AdminContentController.bad("Privacy request must be EXPORT or DELETE");
         Integer existing=jdbc.queryForObject("""
           SELECT count(*) FROM learning_privacy_request
