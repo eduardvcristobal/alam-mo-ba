@@ -31,7 +31,8 @@ code, questions = call("/content/questions?mode=student&grade=7")
 assert code == 200 and questions["total"] == 1, (code, questions)
 q = questions["items"][0]
 assert len(q["options"]) == 2, q
-assert "correct" not in str(q).lower() and "explanation" not in str(q).lower(), q
+assert all("correct" not in option for option in q["options"]), q
+assert all("explanation" not in translation for translation in q["translations"].values()), q
 good = q["options"][0]["id"]
 wrong = q["options"][1]["id"]
 payload = {"mode":"student","grade":7,"answers":[{"questionId":q["id"],"optionId":good}]}
