@@ -28,8 +28,8 @@ public class ContentRepository {
   }
   private static final String FILTER=" FROM content_fact f WHERE f.status='PUBLISHED' AND f.verified_at IS NOT NULL "
      +"AND EXISTS(SELECT 1 FROM content_source s WHERE s.fact_id=f.id AND s.checked_at IS NOT NULL) "
-     +"AND EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience=? AND (? IS NULL OR a.grade_level=?)) "
-     +"AND (? IS NULL OR f.subject_code=?)";
+     +"AND EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience=? AND (CAST(? AS INTEGER) IS NULL OR a.grade_level=?)) "
+     +"AND (CAST(? AS VARCHAR) IS NULL OR f.subject_code=?)";
   private Object[] args(Filter f){return new Object[]{f.mode.equals("student")?"STUDENT":"EXPLORE",f.grade,f.grade,f.subject,f.subject};}
   public long countFacts(Filter f){return jdbc.queryForObject("SELECT count(*)"+FILTER,Long.class,args(f));}
   public List<Map<String,Object>> facts(Filter f){
