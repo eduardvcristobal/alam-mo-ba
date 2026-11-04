@@ -13,8 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/platform")
 public class PlatformSettingsController {
-    private static final Set<String> KEYS=Set.of(
-        "content_submissions_enabled","public_leaderboards_enabled","platform_announcements_enabled");
+    private static final Set<String> KEYS=Set.of("content_submissions_enabled");
     private final JdbcTemplate db;private final PlatformAdminGuard guard;
     public PlatformSettingsController(JdbcTemplate db,PlatformAdminGuard guard){this.db=db;this.guard=guard;}
     public record SettingChange(boolean value,String reason) {}
