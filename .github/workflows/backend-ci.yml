@@ -62,12 +62,15 @@ jobs:
           DB_URL: jdbc:postgresql://localhost:5432/alammoba
           DB_USER: alammoba
           DB_PASSWORD: alammoba_dev
+          PGPASSWORD: alammoba_dev
         run: |
           mvn -B --no-transfer-progress spring-boot:run > /tmp/alammoba-api.log 2>&1 &
           echo $! > /tmp/alammoba.pid
           for i in $(seq 1 90); do
             if curl --fail --silent http://localhost:8080/api/v1/content/facts?mode=explore > /tmp/facts.json; then
               python3 -m json.tool /tmp/facts.json
+              psql -v ON_ERROR_STOP=1 -h localhost -U alammoba -d alammoba -f src/test/resources/ci_content_fixture.sql
+              python3 ci_content_smoke.py
               exit 0
             fi
             if ! kill -0 "$(cat /tmp/alammoba.pid)" 2>/dev/null; then
