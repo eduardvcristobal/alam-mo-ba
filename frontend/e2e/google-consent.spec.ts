@@ -6,7 +6,7 @@ test.beforeEach(async({page})=>{
  await page.reload();
 });
 
-test('disabled-by-default account login stays hidden unless explicitly configured',async({page})=>{
+test('account sign-in remains consent-disabled until explicitly opted in',async({page})=>{
  // CI enables the test-only GIS client for this suite. The consent checkbox stays unchecked.
  await page.getByRole('button',{name:/Explore Mode/}).click();
  await page.getByRole('button',{name:/Profile/}).click();
@@ -19,7 +19,7 @@ test('nonce-bound mocked provider credential flows to account sync without expos
  let seenNonce='';
  let sentNonce='';
  let syncUploads=0;
- await page.addInitScript(()=>{
+ await page.evaluate(()=>{
   type SDK={accounts:{id:{initialize:(config:{nonce:string;callback:(v:{credential:string})=>void})=>void;renderButton:(target:HTMLElement)=>void;cancel:()=>void}}};
   let callback:(v:{credential:string})=>void=()=>{};
   const sdk:SDK={accounts:{id:{
