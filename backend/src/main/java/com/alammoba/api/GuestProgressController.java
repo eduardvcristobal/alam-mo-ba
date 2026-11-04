@@ -91,7 +91,7 @@ public class GuestProgressController {
     @PostMapping("/sessions/revoke")
     public ResponseEntity<Void> revoke(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required=false) String authorization) {
         UUID guestId = authenticate(authorization);
-        jdbc.update("UPDATE learning_guest_credential SET revoked_at=NOW() WHERE id=?", guestId);
+        jdbc.update("DELETE FROM learning_guest_credential WHERE id=?", guestId); // ON DELETE CASCADE erases anonymous backup data
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
