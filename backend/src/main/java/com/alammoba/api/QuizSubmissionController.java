@@ -2,6 +2,7 @@ package com.alammoba.api;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -27,7 +28,7 @@ public class QuizSubmissionController {
 
     public record Answer(long questionId, long optionId) {}
     public record Submission(String mode, Integer grade, String subject, List<Answer> answers) {}
-    public record AnswerResult(long questionId, boolean correct, long correctOptionId) {}
+    public record AnswerResult(long questionId, boolean correct, long correctOptionId, Map<String,String> explanations) {}
     public record Result(int score, int total, List<AnswerResult> answers) {}
 
     static void validate(Submission submission) {
@@ -78,7 +79,10 @@ public class QuizSubmissionController {
             if (correctId == null) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "question has no correct option");
             }
-            answers.add(new AnswerResult(answer.questionId(), correctness.get(0), correctId));
+            Map<String,String> explanations = new LinkedHashMap<>();
+            jdbc.query("SELECT locale,explanation FROM quiz_question_translation WHERE question_id=?",
+                rs -> explanations.put(rs.getString(1), rs.getString(2)), answer.questionId());
+            answers.add(new AnswerResult(answer.questionId(), correctness.get(0), correctId, explanations));
         }
         int score = (int) answers.stream().filter(AnswerResult::correct).count();
         return new Result(score, answers.size(), answers);
