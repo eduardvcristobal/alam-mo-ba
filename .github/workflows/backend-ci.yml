@@ -1,4 +1,4 @@
-name: M1.1 Backend Verification
+name: M1.3 Backend & Editorial Verification
 
 on:
   push:
