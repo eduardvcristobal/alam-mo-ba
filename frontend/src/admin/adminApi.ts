@@ -39,8 +39,10 @@ export const adminApi={
  queue:()=>adminRequest<QueueEntry[]>('/workflow/queue'),
  createFact:(data:FactDraft)=>adminRequest<{id:number;status:FactStatus}>('/facts',json('POST',data)),
  updateFact:(id:number,data:FactDraft)=>adminRequest<{id:number;status:FactStatus}>('/facts/'+id,json('PUT',data)),
+ deleteFact:(id:number)=>adminRequest<{id:number;deleted:boolean}>('/facts/'+id,{method:'DELETE'}),
  createQuestion:(data:QuestionDraft)=>adminRequest<{id:number;status:FactStatus}>('/questions',json('POST',data)),
  updateQuestion:(id:number,data:QuestionDraft)=>adminRequest<{id:number;status:FactStatus}>('/questions/'+id,json('PUT',data)),
+ deleteQuestion:(id:number)=>adminRequest<{id:number;deleted:boolean}>('/questions/'+id,{method:'DELETE'}),
  transition:(type:'fact'|'question',id:number,action:Transition)=>
   adminRequest<{id:number;status:FactStatus}>(`/workflow/${type}/${id}/${action}`,{method:'POST'})
 };
