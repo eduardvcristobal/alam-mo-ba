@@ -32,6 +32,28 @@ public class AdminWorkflowController {
             ) w ORDER BY entity_type,id LIMIT 100
             """,(rs,i)->Map.<String,Object>of("type",rs.getString(1),"id",rs.getLong(2),"status",rs.getString(3))));
     }
+    /** A reviewer must explicitly confirm that they inspected the cited HTTPS source. */
+    @Transactional
+    @PostMapping("/fact/{id}/verify-source")
+    public ResponseEntity<Map<String,Object>> verifySource(
+      @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
+      @PathVariable long id) {
+        UUID reviewer=access.require(bearer,"REVIEWER");
+        var rows=jdbc.query("SELECT status,created_by FROM content_fact WHERE id=? FOR UPDATE",
+            (rs,i)->new State(rs.getString(1),rs.getObject(2,UUID.class),null),id);
+        if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        State fact=rows.get(0);
+        if(!fact.status().equals("IN_REVIEW"))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Source verification requires in-review content");
+        if(fact.author()==null || reviewer.equals(fact.author()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Independent source reviewer required");
+        if(!exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0 AND checked_at IS NOT NULL",id))
+            throw AdminContentController.bad("HTTPS source is required");
+        jdbc.update("UPDATE content_source SET checked_at=NOW() WHERE fact_id=? AND checked_at IS NULL",id);
+        access.audit(reviewer,"VERIFY_SOURCE","FACT",id);
+        return AdminContentController.privateResponse(Map.of("id",id,"sourceVerified",true));
+    }
+
     @Transactional
     @PostMapping("/{type}/{id}/{action}")
     public ResponseEntity<Map<String,Object>> transition(
@@ -67,10 +89,7 @@ public class AdminWorkflowController {
         if(action.equals("approve")) {
             changed=jdbc.update("UPDATE "+table+" SET status='APPROVED',reviewed_by=?,reviewed_at=NOW() WHERE id=? AND status='IN_REVIEW'",
                 actor,id);
-            if(type.equals("fact")) {
-                jdbc.update("UPDATE content_source SET checked_at=NOW() WHERE fact_id=? AND checked_at IS NULL",id);
-                jdbc.update("UPDATE content_fact SET verified_at=NOW() WHERE id=?",id);
-            }
+            if(type.equals("fact"))jdbc.update("UPDATE content_fact SET verified_at=NOW() WHERE id=?",id);
         } else if(action.equals("publish")) {
             changed=jdbc.update("UPDATE "+table+" SET status='PUBLISHED',published_by=?,published_at=NOW() WHERE id=? AND status='APPROVED'",
                 actor,id);
