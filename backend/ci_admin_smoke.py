@@ -108,4 +108,18 @@ code,_=call(f"/admin/workflow/fact/{draftfact['id']}/submit","POST",editor)
 assert code==200,code
 code,_=call(f"/admin/workflow/fact/{draftfact['id']}/approve","POST",reviewer)
 assert code==400,code
+# The admin sign-in endpoint is disabled until a trusted, provisioned provider is configured.
+code,_=call("/admin/auth/challenge","POST")
+assert code==503,code
+code,_=call(f"/admin/facts/{fid}","DELETE",editor)
+assert code==409,code  # Published content is never hard deleted.
+code,temp=call("/admin/facts","POST",editor,draft("admin-delete-"+str(uuid.uuid4())[:8]))
+assert code==200,code
+code,result=call(f"/admin/facts/{temp['id']}","DELETE",editor)
+assert code==200 and result["deleted"],(code,result)
+code,tempq=call("/admin/questions","POST",editor,question)
+assert code==200,code
+code,result=call(f"/admin/questions/{tempq['id']}","DELETE",editor)
+assert code==200 and result["deleted"],(code,result)
+print("PASS: admin login default-off, draft deletion, published retention")
 print("PASS: unauthenticated/unauthorized denial, editor draft, independent review, source gate, publication, quiz answer secrecy, audit lifecycle")
