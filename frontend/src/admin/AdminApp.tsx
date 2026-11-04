@@ -90,7 +90,14 @@ export default function AdminApp(){
  return <div className="admin-shell">
   <aside className="admin-side">
    <div className="admin-brand"><span>💡</span><div><b>Alam Mo Ba?</b><small>Platform Administration</small></div></div>
-   <nav aria-label="Administrator navigation">{tabs.filter(t=>!['settings','audit'].includes(t.id)||roles.includes('SUPER_ADMIN')).map(tab=><button key={tab.id}
+   <nav aria-label="Administrator navigation">{tabs.filter(t=>{
+     if(roles.includes('SUPER_ADMIN'))return true;
+     if(['settings','audit'].includes(t.id))return false;
+     if(['learners','privacy'].includes(t.id))return roles.includes('SUPPORT');
+     if(t.id==='analytics')return roles.includes('CONTENT_ADMIN')||roles.includes('SUPPORT');
+     if(t.id==='review')return roles.includes('CONTENT_ADMIN')||roles.includes('REVIEWER');
+     return true;
+   }).map(tab=><button key={tab.id}
      className={view===tab.id?'selected':''} aria-current={view===tab.id?'page':undefined}
      onClick={()=>{setView(tab.id);setError('');setMessage('');}}>
      <span className="nav-symbol">{tab.icon}</span><span>{tab.title}</span></button>)}</nav>
