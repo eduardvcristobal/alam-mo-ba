@@ -32,7 +32,7 @@ public class PlatformSettingsController {
     public ResponseEntity<?> set(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                  @PathVariable String key,@RequestBody SettingChange input){
         var operator=guard.require(auth);
-        if(!operator.has("SUPER_ADMIN"))throw PlatformAdminContentController.conflict("Super-admin role required");
+        if(!operator.has("SUPER_ADMIN"))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Super-admin role required");
         if(!KEYS.contains(key)||input==null||
            !PlatformAdminContentController.nonblank(input.reason(),500))
             throw PlatformAdminContentController.bad("Unknown setting or missing change reason");
@@ -53,7 +53,7 @@ public class PlatformSettingsController {
     public ResponseEntity<?> audit(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                    @RequestParam(defaultValue="50") int limit){
         var operator=guard.require(auth);
-        if(!operator.has("SUPER_ADMIN","CONTENT_ADMIN"))throw PlatformAdminContentController.conflict("Insufficient audit permissions");
+        if(!operator.has("SUPER_ADMIN","CONTENT_ADMIN"))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Insufficient audit permissions");
         if(limit<1||limit>100)throw PlatformAdminContentController.bad("Invalid limit");
         return response(db.query("""
             SELECT action,target_type,target_id,actor_id,details,created_at
