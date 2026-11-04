@@ -74,6 +74,7 @@ jobs:
               python3 ci_guest_smoke.py
               python3 ci_account_smoke.py
               python3 ci_privacy_smoke.py
+              python3 ci_rate_limit_smoke.py
               exit 0
             fi
             if ! kill -0 "$(cat /tmp/alammoba.pid)" 2>/dev/null; then

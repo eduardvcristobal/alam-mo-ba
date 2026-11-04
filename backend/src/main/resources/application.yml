@@ -12,3 +12,7 @@ spring:
 app:
   cors:
     origin: ${CORS_ORIGIN:http://localhost:5173}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  account:
+    registration-enabled: ${ACCOUNT_REGISTRATION_ENABLED:false}

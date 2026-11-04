@@ -71,7 +71,20 @@ export async function syncAccountProgress(token:string,local:GuestProgress,maxRe
  }
  throw new AccountConflictError();
 }
+export async function exportAccount(token:string):Promise<{accountId:string;version:number;progress:GuestProgress;providers:string[]}>{
+ return parsed('/account/export',{},token);
+}
+export async function deleteAccount(token:string,confirmation:string):Promise<void>{
+ if(confirmation!=='DELETE MY ACCOUNT')throw new Error('Exact deletion confirmation required');
+ const response=await fetch(api+'/account',{
+  method:'DELETE',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+  body:JSON.stringify({confirmation}),cache:'no-store'
+ });
+ if(!response.ok)throw new Error('Account deletion failed: HTTP '+response.status);
+ accountSession.clear();
+}
 export async function logoutAccount(token:string):Promise<void>{
- await fetch(api+'/account/logout',{method:'POST',headers:{Authorization:'Bearer '+token},cache:'no-store'});
+ const response=await fetch(api+'/account/logout',{method:'POST',headers:{Authorization:'Bearer '+token},cache:'no-store'});
+ if(!response.ok)throw new Error('Sign out failed: HTTP '+response.status);
  accountSession.clear();
 }
