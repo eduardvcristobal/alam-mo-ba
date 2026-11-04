@@ -102,6 +102,19 @@ public class AdminContentController {
         access.audit(actor,"EDIT","FACT",id);
         return privateResponse(Map.of("id",id,"status","DRAFT"));
     }
+    @Transactional
+    @DeleteMapping("/facts/{id}")
+    public ResponseEntity<Map<String,Object>> deleteDraft(
+        @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,@PathVariable long id){
+        UUID actor=access.require(bearer,"EDITOR","CONTENT_ADMIN");
+        if(jdbc.queryForObject("SELECT count(*) FROM quiz_question WHERE fact_id=?",Integer.class,id)>0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Delete linked quiz questions first");
+        int changed=jdbc.update("DELETE FROM content_fact WHERE id=? AND status='DRAFT'",id);
+        if(changed!=1)throw new ResponseStatusException(HttpStatus.CONFLICT,"Only draft facts can be deleted");
+        access.audit(actor,"DELETE_DRAFT","FACT",id);
+        return privateResponse(Map.of("id",id,"deleted",true));
+    }
+
     private void writeDetails(Long id,FactDraft f){
         jdbc.update("INSERT INTO content_fact_translation(fact_id,locale,body) VALUES (?,'en',?)",id,f.en().trim());
         jdbc.update("INSERT INTO content_fact_translation(fact_id,locale,body) VALUES (?,'fil',?)",id,f.fil().trim());
