@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useState} from 'react';
 import {adminApi,adminRequest} from './adminApi';
+import AdminLogin from './AdminLogin';
 import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
 import './admin.css';
 
@@ -76,6 +77,7 @@ export default function AdminApp(){
  if(!me)return <main className="admin-gate"><div className="gate-icon">🔐</div><h1>Alam Mo Ba? Admin</h1>
   <p>Administration requires a verified account session and an explicitly assigned platform role.</p>
   <p className="admin-error" role="alert">{error||'Administrator access not available'}</p>
+  <AdminLogin onSignedIn={async()=>{const account=await adminApi.me();setMe(account);setError('');await refresh();}}/>
   <a href="/">Return to learner app</a><small>There is no public admin registration.</small></main>;
  return <div className="admin-shell">
   <aside className="admin-side">
