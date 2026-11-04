@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useState} from 'react';
 import AdminOperations from './AdminOperations';
-import {accountSession} from './lib/accountSync';
+import {accountSession,logoutAccount} from './lib/accountSync';
 import AdminSignIn from './AdminSignIn';
 import {platformAdmin} from './lib/platformAdmin';
 import type {AdminOperator,AdminStats,FactDraft,FactRow,QuizDraft,QuizRow,QueueRow,AdminAudit,ChoiceDraft} from './lib/platformAdmin';
@@ -120,7 +120,7 @@ export default function AdminApp(){
   <aside className="admin-side">
    <a className="admin-logo" href="/admin">💡 Alam Mo Ba?<small>Platform administration</small></a>
    <nav aria-label="Platform admin navigation">{tabs.map(x=><button key={x.id} aria-current={tab===x.id?'page':undefined} className={tab===x.id?'selected':''} onClick={()=>{setTab(x.id);setMessage('');}}>{x.icon} {x.label}</button>)}</nav>
-   <div className="admin-user"><small>Verified operator</small><strong>{operator.roles.join(' · ')}</strong><a href="/">Learner app ↗</a></div>
+   <div className="admin-user"><small>👤 Verified operator</small><strong>{operator.roles.join(' · ')}</strong><a href="/">Learner app ↗</a><button type="button" onClick={()=>{const session=accountSession.get();if(!session)return;void logoutAccount(session.token).then(()=>window.location.assign("/admin")).catch(e=>setMessage(e instanceof Error?e.message:"Could not sign out"));}}>Sign out</button></div>
   </aside>
   <div className="admin-main">
    <header className="admin-top"><div><small>Content operations</small><h1>{tabs.find(x=>x.id===tab)?.label}</h1></div><div>🔒 Restricted workspace</div></header>
