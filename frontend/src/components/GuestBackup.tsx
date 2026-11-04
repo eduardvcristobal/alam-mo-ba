@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {createGuestSession,guestToken,mergeGuestProgress,readGuestProgress,revokeGuestSession,writeGuestProgress} from '../lib/guestCloud';
+import {createGuestSession,guestToken,mergeGuestProgress,readGuestProgress,revokeGuestSession,saveGuestProgress} from '../lib/guestCloud';
 import type {GuestProgress} from '../lib/guestCloud';
 
 export default function GuestBackup({progress,onRestore,lang}:{
@@ -15,10 +15,8 @@ export default function GuestBackup({progress,onRestore,lang}:{
   try{
    const token=guestToken.get()||await createGuestSession();
    setConnected(true);
-   const remote=await readGuestProgress(token);
-   const merged=mergeGuestProgress(progress,remote.state);
-   await writeGuestProgress(token,remote.version,merged);
-   onRestore(merged);
+   const saved=await saveGuestProgress(token,progress);
+   onRestore(saved.state);
    setStatus(tr('Progress safely backed up on this device’s guest session.','Nai-backup ang progreso gamit ang guest session ng device na ito.'));
   }catch(e){setStatus(e instanceof Error?e.message:'Backup unavailable');}
   finally{setBusy(false);}
