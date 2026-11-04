@@ -56,8 +56,8 @@ export default function AdminApp(){
  };
  const editFact=(f:Fact)=>{
   setEditingFact(f.id);setFactForm({key:f.key,subject:f.subject,emoji:f.emoji||'💡',
-   en:f.en||'',fil:f.fil||'',student:true,grade:7,explore:true,
-   sourceTitle:'',sourceUrl:f.sourceUrl||''});
+   en:f.en||'',fil:f.fil||'',student:f.student,grade:f.grade,explore:f.explore,
+   sourceTitle:f.sourceTitle||'',sourceUrl:f.sourceUrl||''});
   setShowFact(true);
  };
  const editQuestion=async(q:QuestionSummary)=>{
