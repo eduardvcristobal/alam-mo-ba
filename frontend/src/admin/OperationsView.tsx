@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useState} from 'react';
 import {adminRequest} from './adminApi';
-import type {Role} from './adminApi';
+import type {Role,Fact} from './adminApi';
 
 export type OperationsKind='curriculum'|'learners'|'analytics'|'privacy'|'settings'|'audit';
 type Subject={code:string;name:string;enabled:boolean};
@@ -14,6 +14,10 @@ const can=(roles:Role[],...needed:Role[])=>roles.includes('SUPER_ADMIN')||needed
 export default function OperationsView({kind,roles}:{kind:OperationsKind;roles:Role[]}){
  const [subjects,setSubjects]=useState<Subject[]>([]);
  const [topics,setTopics]=useState<Topic[]>([]);
+ const [facts,setFacts]=useState<Fact[]>([]);
+ const [selectedFact,setSelectedFact]=useState(0);
+ const [selectedTopic,setSelectedTopic]=useState(0);
+ const [assignments,setAssignments]=useState<{factId:number;topicId:number}[]>([]);
  const [learners,setLearners]=useState<Learner[]>([]);
  const [analytics,setAnalytics]=useState<Aggregate|null>(null);
  const [privacy,setPrivacy]=useState<Privacy[]>([]);
@@ -26,8 +30,12 @@ export default function OperationsView({kind,roles}:{kind:OperationsKind;roles:R
  const load=useCallback(async()=>{
   switch(kind){
    case 'curriculum':{
-    const [s,t]=await Promise.all([adminRequest<Subject[]>('/operations/subjects'),adminRequest<Topic[]>('/operations/topics')]);
-    setSubjects(s);setTopics(t);return;
+    const [s,t,f,a]=await Promise.all([
+      adminRequest<Subject[]>('/operations/subjects'),
+      adminRequest<Topic[]>('/operations/topics'),
+      adminRequest<Fact[]>('/facts'),
+      adminRequest<{factId:number;topicId:number}[]>('/operations/topics/assignments')]);
+    setSubjects(s);setTopics(t);setFacts(f);setAssignments(a);return;
    }
    case 'learners':setLearners(await adminRequest<Learner[]>('/operations/learners'));return;
    case 'analytics':setAnalytics(await adminRequest<Aggregate>('/operations/analytics'));return;
@@ -65,6 +73,22 @@ export default function OperationsView({kind,roles}:{kind:OperationsKind;roles:R
      {can(roles,'CONTENT_ADMIN')?<button disabled={busy} onClick={()=>void run(()=>adminRequest('/operations/topics/'+t.id+'/enabled',{
        method:'PUT',body:JSON.stringify({enabled:!t.enabled})}),t.enabled?'Topic disabled':'Topic enabled')}>{t.enabled?'Disable':'Enable'}</button>:
        t.enabled?'Active':'Disabled'}</td></tr>)}</tbody></table></div>
+    <h3>Assign a draft fact to a curriculum topic</h3>
+    {can(roles,'EDITOR','CONTENT_ADMIN')&&<form className="admin-topic-form" onSubmit={e=>{
+     e.preventDefault();
+     void run(()=>adminRequest('/operations/topics/assign/'+selectedFact,{
+      method:'PUT',body:JSON.stringify({topicId:selectedTopic})
+     }),'Curriculum topic assigned');
+    }}>
+      <label>Draft fact<select value={selectedFact} required onChange={e=>setSelectedFact(Number(e.target.value))}>
+       <option value="0">Choose a draft</option>{facts.filter(f=>f.status==='DRAFT').map(f=>
+        <option key={f.id} value={f.id}>{f.key}</option>)}</select></label>
+      <label>Topic<select value={selectedTopic} required onChange={e=>setSelectedTopic(Number(e.target.value))}>
+       <option value="0">Choose topic</option>{topics.filter(t=>t.enabled).map(t=>
+        <option key={t.id} value={t.id}>{t.subject} · Grade {t.grade} · {t.en}</option>)}</select></label>
+      <button type="submit" className="admin-primary" disabled={busy||!selectedFact||!selectedTopic}>Assign topic</button>
+    </form>}
+    <p className="muted">{assignments.length} fact-to-topic assignments recorded.</p>
    </div></>}
   {kind==='learners'&&<><p className="muted">Only account IDs, status and aggregate learning counts are shown—no emails, birthdates or raw answer histories.</p>
    <div className="admin-scroll"><table><thead><tr><th>Account ID</th><th>Status</th><th>Facts learned</th><th>Created</th><th>Action</th></tr></thead><tbody>
