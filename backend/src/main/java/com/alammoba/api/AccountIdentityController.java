@@ -1,5 +1,6 @@
 package com.alammoba.api;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -30,12 +31,15 @@ public class AccountIdentityController {
     private final JdbcTemplate jdbc;
     private final GoogleIdentityVerifier verifier;
     private final boolean registrationEnabled;
+    private final AuthRateLimiter rateLimiter;
 
     public AccountIdentityController(JdbcTemplate jdbc, GoogleIdentityVerifier verifier,
-         @Value("${app.account.registration-enabled:false}") boolean registrationEnabled) {
+         @Value("${app.account.registration-enabled:false}") boolean registrationEnabled,
+         AuthRateLimiter rateLimiter) {
         this.jdbc=jdbc;
         this.verifier=verifier;
         this.registrationEnabled=registrationEnabled;
+        this.rateLimiter=rateLimiter;
     }
 
     public record Challenge(String nonce, Instant expiresAt) {}
@@ -44,7 +48,8 @@ public class AccountIdentityController {
     public record AccountMe(UUID accountId) {}
 
     @PostMapping("/google/challenge")
-    public ResponseEntity<Challenge> challenge() {
+    public ResponseEntity<Challenge> challenge(HttpServletRequest request) {
+        rateLimiter.enforce(request,"google-challenge",10);
         requireRegistrationEnabled();
         String nonce=randomToken();
         Instant expires=Instant.now().plus(5,ChronoUnit.MINUTES);
@@ -55,7 +60,8 @@ public class AccountIdentityController {
 
     @Transactional
     @PostMapping("/google")
-    public ResponseEntity<AccountSession> login(@RequestBody GoogleLogin input) {
+    public ResponseEntity<AccountSession> login(@RequestBody GoogleLogin input, HttpServletRequest request) {
+        rateLimiter.enforce(request,"google-login",10);
         requireRegistrationEnabled();
         if(input==null || input.nonce()==null || !input.nonce().matches("[A-Za-z0-9_-]{43}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid login challenge");
