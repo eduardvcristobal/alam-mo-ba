@@ -27,11 +27,11 @@ public class PlatformAdminContentController {
                             String explanationFil,List<ChoiceDraft> choices) {}
 
     @GetMapping("/me")
-    public ResponseEntity<?> me(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth){
+    public ResponseEntity<?> me(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth){
         return privateResponse(guard.require(auth));
     }
     @GetMapping("/dashboard")
-    public ResponseEntity<?> dashboard(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth){
+    public ResponseEntity<?> dashboard(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth){
         guard.require(auth);
         Map<String,Object> data=new LinkedHashMap<>();
         data.put("facts",db.queryForObject("SELECT count(*) FROM content_fact",Long.class));
@@ -43,7 +43,7 @@ public class PlatformAdminContentController {
         return privateResponse(data);
     }
     @GetMapping("/facts")
-    public ResponseEntity<?> facts(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,
+    public ResponseEntity<?> facts(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
         @RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="30") int limit) {
         guard.require(auth);
         checkPaging(offset,limit);
@@ -56,7 +56,7 @@ public class PlatformAdminContentController {
             "createdAt",rs.getTimestamp(7).toInstant().toString()),limit,offset));
     }
     @GetMapping("/facts/{id}")
-    public ResponseEntity<?> fact(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,@PathVariable long id){
+    public ResponseEntity<?> fact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@PathVariable long id){
         guard.require(auth);
         var found=db.query("""
             SELECT id,canonical_key,subject_code,emoji,status,created_by,verified_at
@@ -84,7 +84,7 @@ public class PlatformAdminContentController {
 
     @Transactional
     @PostMapping("/facts")
-    public ResponseEntity<?> createFact(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,@RequestBody FactDraft payload){
+    public ResponseEntity<?> createFact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@RequestBody FactDraft payload){
         var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkFact(payload);
         Long id=db.queryForObject("""
             INSERT INTO content_fact(canonical_key,subject_code,emoji,status,created_by)
@@ -96,7 +96,7 @@ public class PlatformAdminContentController {
     }
     @Transactional
     @PutMapping("/facts/{id}")
-    public ResponseEntity<?> updateFact(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,
+    public ResponseEntity<?> updateFact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                         @PathVariable long id,@RequestBody FactDraft payload){
         var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkFact(payload);
         int count=db.update("""
@@ -112,7 +112,7 @@ public class PlatformAdminContentController {
         return privateResponse(Map.of("id",id,"status","DRAFT"));
     }
     @GetMapping("/quizzes")
-    public ResponseEntity<?> quizzes(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,
+    public ResponseEntity<?> quizzes(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                      @RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="30") int limit){
         guard.require(auth);checkPaging(offset,limit);
         return privateResponse(db.query("""
@@ -124,7 +124,7 @@ public class PlatformAdminContentController {
     }
     @Transactional
     @PostMapping("/quizzes")
-    public ResponseEntity<?> createQuiz(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,@RequestBody QuizDraft payload){
+    public ResponseEntity<?> createQuiz(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@RequestBody QuizDraft payload){
         var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkQuiz(payload);
         Integer factCount=db.queryForObject("SELECT count(*) FROM content_fact WHERE id=?",Integer.class,payload.factId());
         if(factCount==null||factCount!=1)throw bad("Fact does not exist");
@@ -137,7 +137,7 @@ public class PlatformAdminContentController {
     }
     @Transactional
     @PutMapping("/quizzes/{id}")
-    public ResponseEntity<?> updateQuiz(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,
+    public ResponseEntity<?> updateQuiz(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                         @PathVariable long id,@RequestBody QuizDraft payload){
         var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkQuiz(payload);
         int n=db.update("UPDATE quiz_question SET fact_id=? WHERE id=? AND status='DRAFT'",payload.factId(),id);
