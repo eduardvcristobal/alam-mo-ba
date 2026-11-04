@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useState} from 'react';
 import {accountSession} from './lib/accountSync';
+import AdminSignIn from './AdminSignIn';
 import {platformAdmin} from './lib/platformAdmin';
 import type {AdminOperator,AdminStats,FactDraft,FactRow,QuizDraft,QuizRow,QueueRow,AdminAudit,ChoiceDraft} from './lib/platformAdmin';
 
@@ -109,7 +110,7 @@ export default function AdminApp(){
    </div>
   </article>;
  };
- if(!operator)return <main className="admin-login"><h1>🛡️ Alam Mo Ba? Platform Admin</h1><p role="alert">{blocked}</p><a href="/">Return to learner app</a><p>Admin privileges must be granted through a trusted operator. Learner and guest accounts cannot self-promote.</p></main>;
+ if(!operator)return <main className="admin-login"><h1>🛡️ Alam Mo Ba? Platform Admin</h1><p role="alert">{blocked}</p><AdminSignIn/><a href="/">Return to learner app</a><p>Admin privileges must be granted through a trusted operator. Learner and guest accounts cannot self-promote.</p></main>;
  return <div className="admin-shell">
   <aside className="admin-side">
    <a className="admin-logo" href="/admin">💡 Alam Mo Ba?<small>Platform administration</small></a>
