@@ -1,10 +1,12 @@
 import {useCallback,useEffect,useState} from 'react';
 import {adminApi,adminRequest} from './adminApi';
 import AdminLogin from './AdminLogin';
+import OperationsView from './OperationsView';
+import type {OperationsKind} from './OperationsView';
 import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
 import './admin.css';
 
-type View='dashboard'|'facts'|'questions'|'review';
+type View='dashboard'|'facts'|'questions'|'review'|OperationsKind;
 const adminRequestVerify=(id:number)=>adminRequest('/workflow/fact/'+id+'/verify-source',{method:'POST'});
 const emptyFact=():FactDraft=>({key:'',subject:'Science',emoji:'💡',en:'',fil:'',student:true,grade:7,explore:true,sourceTitle:'',sourceUrl:''});
 const emptyQuiz=():QuestionDraft=>({factId:0,en:'',fil:'',explanationEn:'',explanationFil:'',
@@ -13,7 +15,13 @@ const tabs:{id:View;icon:string;title:string;subtitle:string}[]=[
  {id:'dashboard',icon:'▦',title:'Dashboard',subtitle:'Platform overview'},
  {id:'facts',icon:'▤',title:'Facts & Content',subtitle:'Bilingual knowledge library'},
  {id:'questions',icon:'◇',title:'Quiz Bank',subtitle:'Question authoring'},
- {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'}
+ {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'},
+ {id:'curriculum',icon:'▧',title:'Curriculum',subtitle:'Grades, subjects and topics'},
+ {id:'learners',icon:'♙',title:'Learners',subtitle:'Account status and privacy'},
+ {id:'analytics',icon:'▥',title:'Analytics',subtitle:'Privacy-conscious aggregates'},
+ {id:'privacy',icon:'⚑',title:'Privacy Requests',subtitle:'Operational privacy queue'},
+ {id:'settings',icon:'⚙',title:'Settings',subtitle:'Controlled platform options'},
+ {id:'audit',icon:'☰',title:'Audit Logs',subtitle:'Administrator activity'}
 ];
 export default function AdminApp(){
  const [me,setMe]=useState<AdminMe|null>(null);
@@ -82,7 +90,7 @@ export default function AdminApp(){
  return <div className="admin-shell">
   <aside className="admin-side">
    <div className="admin-brand"><span>💡</span><div><b>Alam Mo Ba?</b><small>Platform Administration</small></div></div>
-   <nav aria-label="Administrator navigation">{tabs.map(tab=><button key={tab.id}
+   <nav aria-label="Administrator navigation">{tabs.filter(t=>!['settings','audit'].includes(t.id)||roles.includes('SUPER_ADMIN')).map(tab=><button key={tab.id}
      className={view===tab.id?'selected':''} aria-current={view===tab.id?'page':undefined}
      onClick={()=>{setView(tab.id);setError('');setMessage('');}}>
      <span className="nav-symbol">{tab.icon}</span><span>{tab.title}</span></button>)}</nav>
@@ -163,6 +171,8 @@ export default function AdminApp(){
        <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'reject'),'Returned to draft')}>Reject</button></>}
       {item.status==='APPROVED'&&allowed('CONTENT_ADMIN')&&<button disabled={busy} className="admin-primary" onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish'),'Published to learners')}>Publish</button>}
      </td></tr>)}</tbody></table>{!queue.length&&<p>No items are awaiting editorial action.</p>}</div>}</section>}
+   {(['curriculum','learners','analytics','privacy','settings','audit'] as View[]).includes(view)&&
+    <OperationsView key={view} kind={view as OperationsKind} roles={roles}/>}
   </main>
   {showFact&&<div className="admin-modal-bg" role="presentation"><form className="admin-modal" onSubmit={e=>{e.preventDefault();void run(async()=>{
     if(editingFact)await adminApi.updateFact(editingFact,factForm);else await adminApi.createFact(factForm);
