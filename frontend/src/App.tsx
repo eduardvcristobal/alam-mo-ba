@@ -15,7 +15,7 @@ function load():Preferences{try{const v=JSON.parse(localStorage.getItem(storage)
 function today(){return new Date().toLocaleDateString('en-CA');}
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d.toLocaleDateString('en-CA');}
 const subjects=['Science','AP','MAPEH','Filipino','Math','TLE'];
-type Play={kind:'sample'|'api';type:string;items:QuizItem[];apiItems:ApiQuestion[];index:number;score:number;correct:number|null;pick:number|null;busy:boolean;historyIds:number[];feedback:string};
+type Play={kind:'sample'|'api';type:string;items:QuizItem[];apiItems:ApiQuestion[];index:number;score:number;correct:number|null;pick:number|null;busy:boolean;historyIds:number[];feedback:string;hidden:number[];lifelineUsed:boolean};
 const Nav=({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void})=><button className={active?'active':''} onClick={onClick} aria-current={active?'page':undefined}><span>{icon}</span><small>{label}</small></button>;
 export default function App(){
  const [prefs,setPrefs]=useState<Preferences>(load);
@@ -51,14 +51,14 @@ export default function App(){
  const go=(s:Screen)=>{setScreen(s);setPlay(null);setMessage('');};
  const quizPool=samples.filter(f=>f.quiz).map(f=>f.quiz!);
  const startQuiz=(type='mixed',action:'new'|'repeat'='new')=>{
-  if(action==='repeat'&&play){setPlay({...play,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',historyIds:play.items.map(q=>q.id)});return;}
+  if(action==='repeat'&&play){setPlay({...play,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,historyIds:play.items.map(q=>q.id)});return;}
   const previous=play?.historyIds||[];
   const sample=chooseQuestions(quizPool,prefs.count,previous);
   const fresh=shuffled(questions.filter(q=>!previous.includes(q.id)));const recycled=shuffled(questions.filter(q=>previous.includes(q.id)));const live=[...fresh,...recycled].slice(0,Math.min(prefs.count,questions.length));
   if(live.length){
-   setPlay({kind:'api',type,items:[],apiItems:live,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',historyIds:live.map(x=>x.id)});
+   setPlay({kind:'api',type,items:[],apiItems:live,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,historyIds:live.map(x=>x.id)});
   }else{
-   setPlay({kind:'sample',type,items:createQuiz(sample),apiItems:[],index:0,score:0,correct:null,pick:null,busy:false,feedback:'',historyIds:sample.map(q=>q.id)});
+   setPlay({kind:'sample',type,items:createQuiz(sample),apiItems:[],index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,historyIds:sample.map(q=>q.id)});
   }
   setScreen('quiz');
  };
@@ -83,7 +83,7 @@ export default function App(){
  const next=()=>{
   if(!play)return;
   if(play.index+1>=total){update({attempts:[...prefs.attempts,{score:play.score,total,date:today()}].slice(-100)});}
-  setPlay(p=>p?{...p,index:p.index+1,correct:null,pick:null,feedback:''}:p);
+  setPlay(p=>p?{...p,index:p.index+1,correct:null,pick:null,feedback:'',hidden:[]}:p);
  };
  const card=(f:typeof sampleFacts[number])=><article className="fact-item" key={f.id}><span className="emoji">{f.emoji}</span><div><small>{f.subject} · {tr('Grade','Baitang')} {f.grade}</small><p>{lang==='fil'?f.fil:f.en}</p><span className="sample-tag">{tr('Sample · unverified','Halimbawa · hindi beripikado')}</span><div className="actions"><button onClick={()=>markLearned(f.id)}>{prefs.learned.includes(f.id)?'✓ ':''}{tr('Learned','Natutunan')}</button><button onClick={()=>saveFact(f.id)}>{prefs.saved.includes(f.id)?'★':'☆'} {tr('Save','I-save')}</button></div></div></article>;
  if(!mode)return <main className="onboarding"><div className="bulb">💡</div><h1>Alam Mo Ba?</h1><p>{tr('Discover. Learn. Challenge Yourself.','Tumuklas. Matuto. Subukan ang sarili.')}</p><h2>{tr('How would you like to learn?','Paano mo gustong matuto?')}</h2><button className="mode-card" onClick={()=>switchMode('student')}>🎓 <span><b>{tr('Student Mode','Student Mode')}</b><small>{tr('Learn by grade and subject','Matuto ayon sa baitang at paksa')}</small></span> →</button><button className="mode-card" onClick={()=>switchMode('explore')}>🌍 <span><b>{tr('Explore Mode','Explore Mode')}</b><small>{tr('Daily facts and trivia','Mga kaalaman at trivia')}</small></span> →</button><p className="muted">🔒 {tr('No account required. Progress is stored in this browser.','Walang account na kailangan. Sa browser naka-save ang progreso.')}</p><button className="text-button" onClick={()=>update({lang:lang==='en'?'fil':'en'})}>🌐 {lang.toUpperCase()} ⇄</button></main>;
@@ -103,9 +103,9 @@ export default function App(){
  else{
   const item=play.kind==='sample'?play.items[play.index]:null;
   const remote=play.kind==='api'?play.apiItems[play.index]:null;
-  const choices=item?item.choiceOrder.map(i=>({text:item.choices[i],original:i})):remote?remote.options.map((o,i)=>({text:o.translations[lang]||o.translations.en||'',original:i})):[];
+  const choices=item?item.choiceOrder.filter(i=>!play.hidden.includes(i)).map(i=>({text:item.choices[i],original:i})):remote?remote.options.map((o,i)=>({text:o.translations[lang]||o.translations.en||'',original:i})):[];
   const prompt=item?.question||(remote?.translations[lang]?.prompt||remote?.translations.en?.prompt)||'';
-  main=<section className="game"><div className="game-top"><b>50:50</b><button onClick={()=>setPlay(null)}>✕ {tr('Exit','Lumabas')}</button></div><p className="game-meta">{tr('Question','Tanong')} {play.index+1} / {total} · {play.score} {tr('points','puntos')}</p><div className="hex"><h2>{prompt}</h2></div>{choices.map((c,i)=><button key={i} className={'answer '+(play.pick===c.original?'picked ':'')+(play.correct!==null&&play.correct===c.original?'right ':'')+(play.correct!==null&&play.pick===c.original&&play.correct!==c.original?'wrong ':'')} disabled={play.correct!==null||play.busy} onClick={()=>{setPlay(p=>p?{...p,pick:c.original}:p);setMessage('');}}><b>{'ABCD'[i]}:</b> {c.text}</button>)}{message&&<p role="alert">{message}</p>}{play.correct!==null?<><p>{play.correct===play.pick?'✅ '+tr('Correct!','Tama!'):'❌ '+tr('Not quite.','Hindi pa tama.')} {play.feedback}</p><button className="gold wide" onClick={next}>{play.index+1===total?tr('See results','Tingnan ang resulta'):tr('Next question','Susunod na tanong')}</button></>:<button className="gold wide" disabled={play.pick===null||play.busy} onClick={()=>void submit()}>{play.busy?tr('Checking…','Sinusuri…'):tr('Final answer','Pinal na sagot')}</button>}</section>;
+  main=<section className="game"><div className="game-top"><button className="lifeline" disabled={play.kind!=='sample'||play.lifelineUsed||play.correct!==null} onClick={()=>setPlay(p=>{if(!p||p.kind!=='sample'||p.lifelineUsed)return p;const q=p.items[p.index];const wrong=q.choiceOrder.filter(i=>i!==q.correctIndex&&i!==p.pick);return {...p,hidden:shuffled(wrong).slice(0,Math.max(0,wrong.length-1)),lifelineUsed:true};})}>50:50</button><button onClick={()=>setPlay(null)}>✕ {tr('Exit','Lumabas')}</button></div><p className="game-meta">{tr('Question','Tanong')} {play.index+1} / {total} · {play.score} {tr('points','puntos')}</p><div className="hex"><h2>{prompt}</h2></div>{choices.map((c,i)=><button key={i} className={'answer '+(play.pick===c.original?'picked ':'')+(play.correct!==null&&play.correct===c.original?'right ':'')+(play.correct!==null&&play.pick===c.original&&play.correct!==c.original?'wrong ':'')} disabled={play.correct!==null||play.busy} onClick={()=>{setPlay(p=>p?{...p,pick:c.original}:p);setMessage('');}}><b>{'ABCD'[i]}:</b> {c.text}</button>)}{message&&<p role="alert">{message}</p>}{play.correct!==null?<><p>{play.correct===play.pick?'✅ '+tr('Correct!','Tama!'):'❌ '+tr('Not quite.','Hindi pa tama.')} {play.feedback}</p><button className="gold wide" onClick={next}>{play.index+1===total?tr('See results','Tingnan ang resulta'):tr('Next question','Susunod na tanong')}</button></>:<button className="gold wide" disabled={play.pick===null||play.busy} onClick={()=>void submit()}>{play.busy?tr('Checking…','Sinusuri…'):tr('Final answer','Pinal na sagot')}</button>}</section>;
  }
  return <div className="app"><header><div><h1>Alam Mo Ba?</h1><small>{mode==='student'?'🎓 Student Mode':'🌍 Explore Mode'}</small></div><button className="streak" onClick={()=>go('progress')}>🔥 {prefs.streak} {tr('days','araw')}</button></header><main className="content">{main}</main><nav className="bottom" aria-label="Main navigation">{tabs.map(n=><Nav key={n.id} icon={n.icon} label={lang==='en'?n.en:n.fil} active={screen===n.id} onClick={()=>go(n.id)}/>)}</nav></div>;
 }
