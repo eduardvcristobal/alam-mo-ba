@@ -60,8 +60,8 @@ public class ContentRepository {
   private Map<String,Object> question(long id,long factId){
     Map<String,Object> out=new LinkedHashMap<>();out.put("id",id);out.put("factId",factId);
     Map<String,Map<String,String>> text=new LinkedHashMap<>();
-    jdbc.query("SELECT locale,prompt,explanation FROM quiz_question_translation WHERE question_id=?",
-      r->{text.put(r.getString(1),Map.of("prompt",r.getString(2),"explanation",r.getString(3)));},id);
+    jdbc.query("SELECT locale,prompt FROM quiz_question_translation WHERE question_id=?",
+      r->{text.put(r.getString(1),Map.of("prompt",r.getString(2)));},id);
     out.put("translations",text);
     out.put("options",jdbc.query("SELECT id,position FROM quiz_option WHERE question_id=? ORDER BY position",(r,n)->{
       long optionId=r.getLong(1);Map<String,Object> option=new LinkedHashMap<>();option.put("id",optionId);option.put("position",r.getInt(2));
