@@ -63,6 +63,8 @@ jobs:
           DB_USER: alammoba
           DB_PASSWORD: alammoba_dev
           PGPASSWORD: alammoba_dev
+          APP_RATE_LIMIT_GUEST_SESSION_CREATIONS_PER_WINDOW: 8
+          APP_RATE_LIMIT_GUEST_PROGRESS_WRITES_PER_WINDOW: 8
         run: |
           mvn -B --no-transfer-progress spring-boot:run > /tmp/alammoba-api.log 2>&1 &
           echo $! > /tmp/alammoba.pid
@@ -74,8 +76,7 @@ jobs:
               python3 ci_guest_smoke.py
               python3 ci_account_smoke.py
               python3 ci_privacy_smoke.py
-              python3 ci_admin_smoke.py
-              python3 ci_admin_operations_smoke.py
+              python3 ci_rate_limit_smoke.py
               exit 0
             fi
             if ! kill -0 "$(cat /tmp/alammoba.pid)" 2>/dev/null; then

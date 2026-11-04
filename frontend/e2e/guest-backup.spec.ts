@@ -6,8 +6,13 @@ test.beforeEach(async({page})=>{
  await page.reload();
 });
 test('guest learning remains available before enabling any cloud backup',async({page})=>{
+ let backupRequests=0;
+ await page.route('**/api/v1/guest/**',async route=>{backupRequests++;return route.fulfill({status:404});});
  await page.getByRole('button',{name:/Explore Mode/}).click();
  await expect(page.getByText('Fact of the Day')).toBeVisible();
+ await page.locator('.hero').getByRole('button',{name:/Save/}).click();
+ await page.waitForTimeout(650);
+ expect(backupRequests).toBe(0);
  await page.getByRole('button',{name:/Profile/}).click();
  await expect(page.getByRole('button',{name:'Enable guest backup'})).toBeVisible();
  const token=await page.evaluate(()=>localStorage.getItem('alam-mo-ba-guest-cloud-token'));
@@ -17,6 +22,7 @@ test('opt-in backup, restore and revocation do not erase local progress',async({
  let version=0;
  let remote:Record<string,unknown>={};
  let revoked=false;
+ let failNextRead=false;
  const token='T'.repeat(43);
  await page.route('**/api/v1/guest/**',async route=>{
   const request=route.request();
@@ -30,6 +36,7 @@ test('opt-in backup, restore and revocation do not erase local progress',async({
    revoked=true;return route.fulfill({status:204,body:''});
   }
   if(path.endsWith('/progress')&&request.method()==='GET'){
+   if(failNextRead){failNextRead=false;return route.abort('failed');}
    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({version,state:remote})});
   }
   if(path.endsWith('/progress')&&request.method()==='PUT'){
@@ -47,6 +54,25 @@ test('opt-in backup, restore and revocation do not erase local progress',async({
  await expect(page.getByText(/Progress safely backed up/)).toBeVisible();
  expect(version).toBe(1);
  expect((remote.saved as number[]).length).toBe(1);
+ await page.getByRole('button',{name:'Home'}).click();
+ await page.getByRole('button',{name:/Preview another fact/}).click();
+ failNextRead=true;
+ await page.locator('.hero').getByRole('button',{name:/Save/}).click();
+ await page.getByRole('button',{name:'Profile'}).click();
+ await expect(page.getByText(/Backup temporarily unavailable/)).toBeVisible();
+ await expect.poll(()=>version).toBe(2);
+ await expect(page.getByText(/Progress saved automatically/)).toBeVisible();
+ expect((remote.saved as number[]).length).toBe(2);
+ await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
+ await page.getByRole('button',{name:'Home'}).click();
+ await page.getByRole('button',{name:/Preview another fact/}).click();
+ await page.locator('.hero').getByRole('button',{name:/Save/}).click();
+ await page.waitForTimeout(650);
+ expect(version).toBe(2);
+ await page.getByRole('button',{name:'Profile'}).click();
+ await expect(page.getByText(/Backup pending/)).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+ await expect.poll(()=>version).toBe(3);
  await page.getByRole('button',{name:'Restore/merge backup'}).click();
  await expect(page.getByText(/Cloud progress merged/)).toBeVisible();
  page.once('dialog',dialog=>dialog.accept());
@@ -54,6 +80,20 @@ test('opt-in backup, restore and revocation do not erase local progress',async({
  await expect(page.getByText(/Backup access revoked/)).toBeVisible();
  expect(revoked).toBe(true);
  const prefs=await page.evaluate(()=>JSON.parse(localStorage.getItem('alam-mo-ba-v2.1-react-guest')||'{}'));
- expect(prefs.saved).toHaveLength(1);
+ expect(prefs.saved).toHaveLength(3);
+ expect(await page.evaluate(()=>localStorage.getItem('alam-mo-ba-guest-cloud-token'))).toBeNull();
+});
+test('expired guest session is cleared and can be enabled again',async({page})=>{
+ const token='E'.repeat(43);
+ await page.route('**/api/v1/guest/**',async route=>{
+  if(route.request().url().endsWith('/guest/sessions'))
+   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({token,expiresAt:'2099-01-01T00:00:00Z'})});
+  return route.fulfill({status:401});
+ });
+ await page.getByRole('button',{name:/Explore Mode/}).click();
+ await page.getByRole('button',{name:/Profile/}).click();
+ await page.getByRole('button',{name:'Enable guest backup'}).click();
+ await expect(page.getByText(/backup session expired/i)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Enable guest backup'})).toBeVisible();
  expect(await page.evaluate(()=>localStorage.getItem('alam-mo-ba-guest-cloud-token'))).toBeNull();
 });

@@ -12,7 +12,9 @@ spring:
 app:
   cors:
     origin: ${CORS_ORIGIN:http://localhost:5173}
-  google:
-    client-id: ${GOOGLE_CLIENT_ID:}
-  admin:
-    google-login-enabled: ${ADMIN_GOOGLE_LOGIN_ENABLED:false}
+  rate-limit:
+    guest:
+      window-seconds: ${APP_RATE_LIMIT_GUEST_WINDOW_SECONDS:60}
+      session-creations-per-window: ${APP_RATE_LIMIT_GUEST_SESSION_CREATIONS_PER_WINDOW:5}
+      progress-writes-per-window: ${APP_RATE_LIMIT_GUEST_PROGRESS_WRITES_PER_WINDOW:60}
+      max-tracked-keys: ${APP_RATE_LIMIT_GUEST_MAX_TRACKED_KEYS:10000}
