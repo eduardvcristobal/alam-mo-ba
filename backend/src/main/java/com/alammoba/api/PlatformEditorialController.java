@@ -23,7 +23,7 @@ public class PlatformEditorialController {
     public record ReviewTarget(String type,long id,String status,UUID author,UUID reviewer) {}
 
     @GetMapping("/queue")
-    public ResponseEntity<?> queue(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth){
+    public ResponseEntity<?> queue(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth){
         guard.require(auth);
         Map<String,Object> list=new LinkedHashMap<>();
         list.put("facts",db.query("""
@@ -39,7 +39,7 @@ public class PlatformEditorialController {
     }
 
     @GetMapping("/audit")
-    public ResponseEntity<?> audit(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,
+    public ResponseEntity<?> audit(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                    @RequestParam(defaultValue="50") int limit){
         guard.require(auth);
         if(limit<1||limit>100)throw PlatformAdminContentController.bad("Invalid limit");
@@ -58,7 +58,7 @@ public class PlatformEditorialController {
 
     @Transactional
     @PostMapping("/{type}/{id}")
-    public ResponseEntity<?> decide(@RequestHeader(HttpHeaders.AUTHORIZATION) String auth,
+    public ResponseEntity<?> decide(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                     @PathVariable String type,@PathVariable long id,@RequestBody Decision request){
         var operator=guard.require(auth);
         if(id<1||request==null||request.action()==null)throw PlatformAdminContentController.bad("Invalid review request");
