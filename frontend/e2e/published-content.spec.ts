@@ -36,6 +36,35 @@ test('verified content respects student grade filtering',async({page})=>{
  await page.getByRole('combobox',{name:'Grade'}).selectOption('7');
  await expect(page.getByText('Verified Fact of the Day')).toBeVisible();
 });
+test('Learn searches published and sample facts separately',async({page})=>{
+ await page.getByRole('button',{name:/Explore Mode/}).click();
+ await page.getByRole('button',{name:/Discover/}).click();
+ await expect(page.getByRole('heading',{name:'Verified facts'})).toBeVisible();
+ await expect(page.getByText('Verified science content for CI').first()).toBeVisible();
+ await page.getByRole('searchbox',{name:'Search facts'}).fill('Verified science');
+ await expect(page.getByText('Verified science content for CI').first()).toBeVisible();
+ await expect(page.getByText('No sample facts match your search.')).toBeVisible();
+});
+test('offline content shows sample fallback and retry can recover',async({page})=>{
+ let failed=true;
+ await page.unroute('**/api/v1/content/facts?**');
+ await page.route('**/api/v1/content/facts?**',async route=>{
+  if(failed){await route.abort('failed');return;}
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({items:[fact],total:1,limit:100,offset:0})});
+ });
+ await page.reload();
+ await page.getByRole('button',{name:/Explore Mode/}).click();
+ await expect(page.getByText('Sample · API unavailable · unverified')).toBeVisible();
+ await page.getByRole('button',{name:'Retry content connection'}).click();
+ failed=false;
+ await expect(page.getByText('Verified Fact of the Day')).toBeVisible();
+});
+test('connected API with no matching facts explains the empty state',async({page})=>{
+ await page.getByRole('button',{name:/Student Mode/}).click();
+ await page.getByRole('combobox',{name:'Grade'}).selectOption('8');
+ await page.getByRole('button',{name:/Learn/}).click();
+ await expect(page.getByText('No verified facts match these filters yet.')).toBeVisible();
+});
 test('keyboard access to guest mode and quiz answer',async({page})=>{
  await page.getByRole('button',{name:/Explore Mode/}).focus();
  await page.keyboard.press('Enter');
