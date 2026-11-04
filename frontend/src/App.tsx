@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {contentApi} from './lib/contentApi';
 import type {ApiFact,ApiQuestion} from './lib/contentApi';
 import {sampleFacts} from './data/sample';
+import {sampleQuizFil} from './data/sampleQuizFil';
 import {chooseQuestions,createQuiz,shuffled} from './lib/quiz';
 import type {QuizItem} from './lib/quiz';
 
@@ -60,7 +61,7 @@ export default function App(){
  const markLearned=(id:number)=>{const d=today();setPrefs(p=>({...p,learned:p.learned.includes(id)?p.learned:[...p.learned,id],streak:p.last===d?p.streak:p.last===yesterday()?p.streak+1:1,last:d}));};
  const switchMode=(m:Mode)=>{update({mode:m,subject:'all'});setScreen('home');setPlay(null);setSearch('');};
  const go=(s:Screen)=>{setScreen(s);setPlay(null);setMessage('');};
- const quizPool=samples.filter(f=>f.quiz).map(f=>f.quiz!);
+ const quizPool=samples.filter(f=>f.quiz).map(f=>{const q=f.quiz!;const fil=sampleQuizFil[q.id];return lang==='fil'&&fil?{...q,question:fil.question,choices:fil.choices,explanation:fil.explanation}:q;});
  const startQuiz=(type='mixed',action:'new'|'repeat'='new')=>{
   if(action==='repeat'&&play){setPlay({...play,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,wrongIds:[],historyIds:[...play.historyIds]});return;}
   const previous=play?.historyIds||[];
