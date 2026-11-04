@@ -1,17 +1,22 @@
 import {useCallback,useEffect,useState} from 'react';
+import AdminOperations from './AdminOperations';
 import {accountSession} from './lib/accountSync';
 import AdminSignIn from './AdminSignIn';
 import {platformAdmin} from './lib/platformAdmin';
 import type {AdminOperator,AdminStats,FactDraft,FactRow,QuizDraft,QuizRow,QueueRow,AdminAudit,ChoiceDraft} from './lib/platformAdmin';
 
-type Tab='dashboard'|'facts'|'quizzes'|'reviews'|'audit';
+type Tab='dashboard'|'facts'|'quizzes'|'reviews'|'audit'|'curriculum'|'learners'|'analytics'|'settings';
 const emptyFact:FactDraft={key:'',subject:'Science',emoji:'💡',en:'',fil:'',explore:true,grades:[7],sourceTitle:'',sourceUrl:''};
 const emptyQuiz:QuizDraft={factId:0,en:'',fil:'',explanationEn:'',explanationFil:'',
  choices:[{en:'',fil:'',correct:true},{en:'',fil:'',correct:false},{en:'',fil:'',correct:false}]};
 const tabs:{id:Tab;icon:string;label:string}[]=[
  {id:'dashboard',icon:'📊',label:'Dashboard'},{id:'facts',icon:'📚',label:'Facts & Sources'},
  {id:'quizzes',icon:'🧠',label:'Quiz Bank'},{id:'reviews',icon:'✅',label:'Review Queue'},
- {id:'audit',icon:'🛡️',label:'Audit Log'}
+ {id:'audit',icon:'🛡️',label:'Audit Log'},
+ {id:'curriculum',icon:'🎓',label:'Curriculum'},
+ {id:'learners',icon:'👥',label:'Learners'},
+ {id:'analytics',icon:'📈',label:'Analytics'},
+ {id:'settings',icon:'⚙️',label:'Platform Settings'}
 ];
 const subjects=['Science','AP','MAPEH','Filipino','Math','TLE'];
 export default function AdminApp(){
@@ -120,6 +125,7 @@ export default function AdminApp(){
   <div className="admin-main">
    <header className="admin-top"><div><small>Content operations</small><h1>{tabs.find(x=>x.id===tab)?.label}</h1></div><div>🔒 Restricted workspace</div></header>
    {message&&<p className="admin-notice" role="status" aria-live="polite">{message}</p>}
+   {(tab==='curriculum'||tab==='learners'||tab==='analytics'||tab==='settings')&&<AdminOperations tab={tab} roles={operator.roles}/>}
    {tab==='dashboard'&&<><div className="admin-stats">{[
     ['Total facts',stats?.facts||0],['Published facts',stats?.publishedFacts||0],
     ['Pending facts',stats?.pendingFacts||0],['Quiz questions',stats?.quizzes||0],
