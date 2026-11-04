@@ -36,7 +36,7 @@ public class PlatformLearnerController {
     public ResponseEntity<?> status(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                     @PathVariable UUID id,@RequestBody StatusChange change){
         var actor=guard.require(auth);
-        if(!actor.has("SUPER_ADMIN"))throw PlatformAdminContentController.conflict("Super-admin approval required");
+        if(!actor.has("SUPER_ADMIN"))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Super-admin approval required");
         if(change==null||!("ACTIVE".equals(change.status())||"DISABLED".equals(change.status()))||
            !PlatformAdminContentController.nonblank(change.reason(),500))
             throw PlatformAdminContentController.bad("Provide a valid status and reason");
