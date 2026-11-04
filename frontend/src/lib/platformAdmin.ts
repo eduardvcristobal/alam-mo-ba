@@ -35,6 +35,7 @@ export const platformAdmin={
  createFact:(fact:FactDraft)=>call<{id:number;status:string}>('/facts','POST',fact),
  updateFact:(id:number,fact:FactDraft)=>call<{id:number;status:string}>('/facts/'+id,'PUT',fact),
  quizzes:()=>call<QuizRow[]>('/quizzes'),
+ quiz:(id:number)=>call<{id:number;factId:number;status:string;translations:{locale:string;prompt:string;explanation:string}[];choices:ChoiceDraft[]}>('/quizzes/'+id),
  createQuiz:(quiz:QuizDraft)=>call<{id:number;status:string}>('/quizzes','POST',quiz),
  updateQuiz:(id:number,quiz:QuizDraft)=>call<{id:number;status:string}>('/quizzes/'+id,'PUT',quiz),
  queue:()=>call<{facts:QueueRow[];quizzes:QueueRow[]}>('/review/queue'),
