@@ -86,6 +86,7 @@ public class PlatformAdminContentController {
     @PostMapping("/facts")
     public ResponseEntity<?> createFact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@RequestBody FactDraft payload){
         var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkFact(payload);
+        if(!PlatformSettingsController.enabled(db,"content_submissions_enabled"))throw conflict("New content submissions are paused");
         Long id=db.queryForObject("""
             INSERT INTO content_fact(canonical_key,subject_code,emoji,status,created_by)
             VALUES (?,?,?,'DRAFT',?) RETURNING id
@@ -154,6 +155,7 @@ public class PlatformAdminContentController {
     @PostMapping("/quizzes")
     public ResponseEntity<?> createQuiz(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@RequestBody QuizDraft payload){
         var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkQuiz(payload);
+        if(!PlatformSettingsController.enabled(db,"content_submissions_enabled"))throw conflict("New content submissions are paused");
         Integer factCount=db.queryForObject("SELECT count(*) FROM content_fact WHERE id=?",Integer.class,payload.factId());
         if(factCount==null||factCount!=1)throw bad("Fact does not exist");
         Long id=db.queryForObject("""
