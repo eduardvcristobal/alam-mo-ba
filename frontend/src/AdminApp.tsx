@@ -73,6 +73,22 @@ export default function AdminApp(){
   }catch(e){setMessage(e instanceof Error?e.message:'Could not load draft fact');}
   finally{setBusy(false);}
  }
+ async function editQuiz(id:number){
+  setMessage('');setBusy(true);
+  try{
+   const record=await platformAdmin.quiz(id);
+   const en=record.translations.find(x=>x.locale==='en');
+   const fil=record.translations.find(x=>x.locale==='fil');
+   setQuizDraft({
+    factId:record.factId,en:en?.prompt||'',fil:fil?.prompt||'',
+    explanationEn:en?.explanation||'',explanationFil:fil?.explanation||'',
+    choices:record.choices
+   });
+   setEditingQuiz(id);
+   setTab('quizzes');
+  }catch(e){setMessage(e instanceof Error?e.message:'Cannot edit quiz');}
+  finally{setBusy(false);}
+ }
  const changeChoice=(index:number,change:Partial<ChoiceDraft>)=>setQuizDraft(p=>({
   ...p,choices:p.choices.map((choice,i)=>i===index?{...choice,...change}:choice)
  }));
@@ -119,15 +135,15 @@ export default function AdminApp(){
     <button className="admin-primary" type="submit" disabled={busy}>Save draft</button> {editingFact&&<button type="button" onClick={()=>{setEditingFact(null);setFactDraft(emptyFact);}}>Cancel editing</button>}
    </form>:<p>Read-only access. An editor role is required.</p>}</section>
    <section className="admin-panel"><h2>Facts</h2>{facts.length?facts.map(f=><article className="admin-entry" key={f.id}><div><strong>{f.emoji} {f.key}</strong><small>{f.subject} · #{f.id}</small><div className={statusClass(f.status)}>{f.status}</div></div><div className="admin-review-actions">{canEdit&&f.status==='DRAFT'&&<button disabled={busy} onClick={()=>void editFact(f.id)}>Edit</button>}{canEdit&&f.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>platformAdmin.decide('facts',f.id,'submit'),'Fact sent to review')}>Submit for review</button>}{canPublish&&f.status==='PUBLISHED'&&<button disabled={busy} onClick={()=>void run(()=>platformAdmin.decide('facts',f.id,'retire'),'Fact retired')}>Retire</button>}</div></article>):<p>No facts yet.</p>}</section></>}
-   {tab==='quizzes'&&<><section className="admin-panel"><h2>Create quiz draft</h2>{canEdit?<form onSubmit={e=>{e.preventDefault();void run(async()=>{
+   {tab==='quizzes'&&<><section className="admin-panel"><h2>{editingQuiz?'Edit quiz draft':'Create quiz draft'}</h2>{canEdit?<form onSubmit={e=>{e.preventDefault();void run(async()=>{
     if(editingQuiz)await platformAdmin.updateQuiz(editingQuiz,quizDraft);else await platformAdmin.createQuiz(quizDraft);
     setQuizDraft(emptyQuiz);setEditingQuiz(null);
    },'Quiz draft saved');}}>
     <label>Linked fact<select value={quizDraft.factId} required onChange={e=>setQuizDraft(p=>({...p,factId:Number(e.target.value)}))}><option value={0}>Select parent fact</option>{facts.map(f=><option key={f.id} value={f.id}>{f.key} ({f.status})</option>)}</select></label>
     <div className="admin-formgrid"><label>Question (English)<textarea required rows={2} value={quizDraft.en} onChange={e=>setQuizDraft(p=>({...p,en:e.target.value}))}/></label><label>Question (Filipino)<textarea required rows={2} value={quizDraft.fil} onChange={e=>setQuizDraft(p=>({...p,fil:e.target.value}))}/></label><label>Explanation (English)<textarea required value={quizDraft.explanationEn} onChange={e=>setQuizDraft(p=>({...p,explanationEn:e.target.value}))}/></label><label>Explanation (Filipino)<textarea required value={quizDraft.explanationFil} onChange={e=>setQuizDraft(p=>({...p,explanationFil:e.target.value}))}/></label></div>
     <h3>Answer choices</h3>{quizDraft.choices.map((choice,i)=><div className="admin-choice" key={i}><label>Choice {i+1} EN<input required value={choice.en} onChange={e=>changeChoice(i,{en:e.target.value})}/></label><label>FIL<input required value={choice.fil} onChange={e=>changeChoice(i,{fil:e.target.value})}/></label><label className="admin-check"><input type="radio" name="correctOption" checked={choice.correct} onChange={()=>setQuizDraft(p=>({...p,choices:p.choices.map((x,j)=>({...x,correct:i===j}))}))}/> Correct</label></div>)}
-    <div className="admin-review-actions"><button type="button" disabled={quizDraft.choices.length>=6} onClick={()=>setQuizDraft(p=>({...p,choices:[...p.choices,{en:'',fil:'',correct:false}]}))}>Add choice</button><button type="button" disabled={quizDraft.choices.length<=2} onClick={()=>setQuizDraft(p=>({...p,choices:p.choices.slice(0,-1).map((x,i)=>({...x,correct:i===0&&p.choices.at(-1)?.correct?true:x.correct}))}))}>Remove last</button><button className="admin-primary" type="submit" disabled={busy||!quizDraft.factId}>Save quiz draft</button></div>
-   </form>:<p>Read-only access.</p>}</section><section className="admin-panel"><h2>Question bank</h2>{quizzes.map(q=><article className="admin-entry" key={q.id}><div><strong>{q.prompt}</strong><small>Question #{q.id} · Fact #{q.factId}</small><div className={statusClass(q.status)}>{q.status}</div></div><div className="admin-review-actions">{canEdit&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>platformAdmin.decide('quizzes',q.id,'submit'),'Quiz submitted for review')}>Submit</button>}{canPublish&&q.status==='PUBLISHED'&&<button disabled={busy} onClick={()=>void run(()=>platformAdmin.decide('quizzes',q.id,'retire'),'Quiz retired')}>Retire</button>}</div></article>)}</section></>}
+    <div className="admin-review-actions"><button type="button" disabled={quizDraft.choices.length>=6} onClick={()=>setQuizDraft(p=>({...p,choices:[...p.choices,{en:'',fil:'',correct:false}]}))}>Add choice</button><button type="button" disabled={quizDraft.choices.length<=2} onClick={()=>setQuizDraft(p=>({...p,choices:p.choices.slice(0,-1).map((x,i)=>({...x,correct:i===0&&p.choices.at(-1)?.correct?true:x.correct}))}))}>Remove last</button><button className="admin-primary" type="submit" disabled={busy||!quizDraft.factId}>Save quiz draft</button> {editingQuiz&&<button type="button" onClick={()=>{setEditingQuiz(null);setQuizDraft(emptyQuiz);}}>Cancel editing</button>}</div>
+   </form>:<p>Read-only access.</p>}</section><section className="admin-panel"><h2>Question bank</h2>{quizzes.map(q=><article className="admin-entry" key={q.id}><div><strong>{q.prompt}</strong><small>Question #{q.id} · Fact #{q.factId}</small><div className={statusClass(q.status)}>{q.status}</div></div><div className="admin-review-actions">{canEdit&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>void editQuiz(q.id)}>Edit</button>}{canEdit&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>platformAdmin.decide('quizzes',q.id,'submit'),'Quiz submitted for review')}>Submit</button>}{canPublish&&q.status==='PUBLISHED'&&<button disabled={busy} onClick={()=>void run(()=>platformAdmin.decide('quizzes',q.id,'retire'),'Quiz retired')}>Retire</button>}</div></article>)}</section></>}
    {tab==='reviews'&&<section className="admin-panel"><h2>Pending approvals</h2><p>Authors cannot approve their own content. Reviewers must explicitly check fact sources before approval.</p><h3>Facts</h3>{queue.facts.map(q=>reviewItem('facts',q))}<h3>Quizzes</h3>{queue.quizzes.map(q=>reviewItem('quizzes',q))}{!queue.facts.length&&!queue.quizzes.length&&<p>No pending reviews.</p>}</section>}
    {tab==='audit'&&<section className="admin-panel"><h2>Editorial activity</h2>{audit.map((entry,i)=><article className="admin-entry" key={i}><div><strong>{entry.type} #{entry.id} · {entry.action}</strong><small>{entry.at} · {entry.actorId}</small><div>{entry.from||'—'} → {entry.to||'—'}</div><p>{entry.note}</p></div></article>)}{!audit.length&&<p>No recorded events.</p>}</section>}
   </div>
