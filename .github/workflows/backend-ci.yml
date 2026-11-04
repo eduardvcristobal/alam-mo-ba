@@ -72,6 +72,8 @@ jobs:
               psql -v ON_ERROR_STOP=1 -h localhost -U alammoba -d alammoba -f src/test/resources/ci_content_fixture.sql
               python3 ci_content_smoke.py
               python3 ci_guest_smoke.py
+              python3 ci_account_smoke.py
+              python3 ci_privacy_smoke.py
               exit 0
             fi
             if ! kill -0 "$(cat /tmp/alammoba.pid)" 2>/dev/null; then
