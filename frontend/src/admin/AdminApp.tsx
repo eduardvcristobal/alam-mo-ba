@@ -1,9 +1,10 @@
 import {useCallback,useEffect,useState} from 'react';
-import {adminApi} from './adminApi';
+import {adminApi,adminRequest} from './adminApi';
 import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
 import './admin.css';
 
 type View='dashboard'|'facts'|'questions'|'review';
+const adminRequestVerify=(id:number)=>adminRequest('/workflow/fact/'+id+'/verify-source',{method:'POST'});
 const emptyFact=():FactDraft=>({key:'',subject:'Science',emoji:'💡',en:'',fil:'',student:true,grade:7,explore:true,sourceTitle:'',sourceUrl:''});
 const emptyQuiz=():QuestionDraft=>({factId:0,en:'',fil:'',explanationEn:'',explanationFil:'',
  options:[{en:'',fil:'',correct:true},{en:'',fil:'',correct:false},{en:'',fil:'',correct:false}]});
@@ -132,6 +133,14 @@ export default function AdminApp(){
      <tr><th>Type</th><th>Content ID</th><th>Status</th><th>Decision</th></tr></thead><tbody>{queue.map(item=>
      <tr key={item.type+item.id}><td>{item.type}</td><td>#{item.id}</td><td><Status value={item.status}/></td><td>
       {item.status==='IN_REVIEW'&&allowed('REVIEWER')&&<>
+       {item.type==='FACT'&&<button disabled={busy} onClick={()=>{
+        const fact=facts.find(f=>f.id===item.id);
+        if(!fact?.sourceUrl){setError('No HTTPS source is attached');return;}
+        window.open(fact.sourceUrl,'_blank','noopener,noreferrer');
+        if(window.confirm('Have you independently checked the source and the bilingual fact?')) {
+         void run(()=>adminRequestVerify(item.id),'Source verification recorded');
+        }
+       }}>Verify source</button>}
        <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'approve'),'Independent review approved')}>Approve</button>
        <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'reject'),'Returned to draft')}>Reject</button></>}
       {item.status==='APPROVED'&&allowed('CONTENT_ADMIN')&&<button disabled={busy} className="admin-primary" onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish'),'Published to learners')}>Publish</button>}
