@@ -1,5 +1,4 @@
 import {useCallback,useEffect,useState} from 'react';
-import {accountSession} from '../lib/accountSync';
 import {adminApi} from './adminApi';
 import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
 import './admin.css';
