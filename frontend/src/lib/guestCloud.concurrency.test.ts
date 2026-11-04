@@ -4,7 +4,7 @@ import type {GuestProgress} from './guestCloud';
 
 const local:GuestProgress={mode:'student',lang:'fil',grade:'7',subject:'Science',count:5,saved:[1],learned:[2],streak:1,last:'2026-11-04',attempts:[]};
 function response(status:number,payload:unknown){
- return {status,ok:status>=200&&status<300,json:async()=>payload} as Response;
+ return {status,ok:status>=200&&status<300,json:async()=>payload,headers:{get:(name:string)=>name==='Retry-After'?'17':null}} as unknown as Response;
 }
 afterEach(()=>vi.unstubAllGlobals());
 describe('optimistic guest backup synchronization',()=>{
@@ -46,5 +46,12 @@ describe('optimistic guest backup synchronization',()=>{
   vi.stubGlobal('fetch',request);
   await expect(saveGuestProgress('token',local)).rejects.toThrow(/401/);
   expect(request).toHaveBeenCalledTimes(2);
+ });
+ it('surfaces Retry-After from a rate-limited guest request',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async(_url:string,opts:{method?:string})=>
+   opts?.method==='PUT'?response(429,{}):response(200,{version:0,state:local})));
+  await expect(saveGuestProgress('token',local)).rejects.toMatchObject({
+   name:'GuestRateLimitError',retryAfterSeconds:17
+  });
  });
 });

@@ -50,7 +50,7 @@ GitHub Actions also runs a PostgreSQL 16/Flyway smoke test with isolated synthet
 - Bilingual EN/FIL facts, sample quizzes, local bookmarks, and streaks.
 - Quiz settings: 1–100 questions, capped to the available pool. After finishing, choose **Repeat the same questions** or **Try another question set**.
 - When the content API has verified published facts/questions, they take precedence. When no published content exists, local preview data is clearly marked **unverified**.
-- Browser localStorage stores guest progress. Accounts, cloud sync, and guest migration are scoped to M1.2.
+- Guest progress stays in this browser unless the learner enables optional guest backup in Profile. Once enabled, progress changes are saved automatically to a device-bound anonymous backup; account sign-in and cross-device recovery are not available.
 
 ## Branch and review policy
 

@@ -7,6 +7,15 @@ export type GuestProgress={
 export type GuestCloudState={version:number;state:GuestProgress};
 const tokenKey='alam-mo-ba-guest-cloud-token';
 const apiBase=(import.meta.env.VITE_API_BASE_URL||'/api/v1').replace(/\/$/,'');
+export class GuestRateLimitError extends Error {
+ constructor(public readonly retryAfterSeconds:number){super('Guest backup rate limit exceeded');this.name='GuestRateLimitError';}
+}
+function throwIfRateLimited(response:Response):void{
+ if(response.status===429){
+  const value=Number(response.headers.get('Retry-After'));
+  throw new GuestRateLimitError(Number.isFinite(value)&&value>0?value:1);
+ }
+}
 export const guestToken={
  get:()=>localStorage.getItem(tokenKey),
  set:(token:string)=>localStorage.setItem(tokenKey,token),
@@ -14,6 +23,7 @@ export const guestToken={
 };
 export async function createGuestSession():Promise<string>{
  const response=await fetch(apiBase+'/guest/sessions',{method:'POST'});
+ throwIfRateLimited(response);
  if(!response.ok)throw new Error('Unable to open guest backup');
  const result=await response.json() as {token:string;expiresAt:string};
  if(!result.token)throw new Error('Missing guest backup token');
@@ -30,6 +40,7 @@ async function request(url:string,token:string,method:'GET'|'PUT'|'POST'='GET',b
 }
 export async function readGuestProgress(token:string):Promise<GuestCloudState>{
  const response=await request('/guest/progress',token);
+ throwIfRateLimited(response);
  if(!response.ok)throw new Error('Guest backup unavailable: '+response.status);
  return response.json() as Promise<GuestCloudState>;
 }
@@ -51,6 +62,7 @@ export async function saveGuestProgress(token:string,local:GuestProgress,maxRetr
 }
 export async function writeGuestProgress(token:string,version:number,state:GuestProgress):Promise<GuestCloudState>{
  const response=await request('/guest/progress',token,'PUT',{expectedVersion:version,state});
+ throwIfRateLimited(response);
  if(response.status===409)throw new GuestConflictError();
  if(!response.ok)throw new Error('Could not save progress: '+response.status);
  return response.json() as Promise<GuestCloudState>;
