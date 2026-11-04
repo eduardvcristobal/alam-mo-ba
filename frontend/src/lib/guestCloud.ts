@@ -33,9 +33,25 @@ export async function readGuestProgress(token:string):Promise<GuestCloudState>{
  if(!response.ok)throw new Error('Guest backup unavailable: '+response.status);
  return response.json() as Promise<GuestCloudState>;
 }
+export class GuestConflictError extends Error {
+ constructor(){super('Guest backup changed while saving');this.name='GuestConflictError';}
+}
+export async function saveGuestProgress(token:string,local:GuestProgress,maxRetries=2):Promise<GuestCloudState>{
+ let source=local;
+ for(let attempt=0;attempt<=maxRetries;attempt++){
+  const remote=await readGuestProgress(token);
+  source=mergeGuestProgress(source,remote.state);
+  try{
+   return await writeGuestProgress(token,remote.version,source);
+  }catch(error){
+   if(!(error instanceof GuestConflictError)||attempt===maxRetries)throw error;
+  }
+ }
+ throw new GuestConflictError();
+}
 export async function writeGuestProgress(token:string,version:number,state:GuestProgress):Promise<GuestCloudState>{
  const response=await request('/guest/progress',token,'PUT',{expectedVersion:version,state});
- if(response.status===409)throw new Error('Guest backup was updated elsewhere. Retry to merge.');
+ if(response.status===409)throw new GuestConflictError();
  if(!response.ok)throw new Error('Could not save progress: '+response.status);
  return response.json() as Promise<GuestCloudState>;
 }
