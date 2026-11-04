@@ -91,6 +91,17 @@ public class AdminQuizController {
         access.audit(actor,"EDIT","QUESTION",id);
         return AdminContentController.privateResponse(Map.of("id",id,"status","DRAFT"));
     }
+    @Transactional
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String,Object>> deleteDraft(
+        @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,@PathVariable long id){
+        UUID actor=access.require(bearer,"EDITOR","CONTENT_ADMIN");
+        int changed=jdbc.update("DELETE FROM quiz_question WHERE id=? AND status='DRAFT'",id);
+        if(changed!=1)throw new ResponseStatusException(HttpStatus.CONFLICT,"Only draft questions can be deleted");
+        access.audit(actor,"DELETE_DRAFT","QUESTION",id);
+        return AdminContentController.privateResponse(Map.of("id",id,"deleted",true));
+    }
+
     private void write(long id,QuestionDraft q){
         jdbc.update("INSERT INTO quiz_question_translation(question_id,locale,prompt,explanation) VALUES (?,'en',?,?)",
           id,q.en().trim(),q.explanationEn().trim());
