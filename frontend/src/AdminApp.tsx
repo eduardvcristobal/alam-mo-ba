@@ -1,22 +1,16 @@
 import {useCallback,useEffect,useState} from 'react';
-import AdminOperations from './AdminOperations';
-import {accountSession,logoutAccount} from './lib/accountSync';
-import AdminSignIn from './AdminSignIn';
+import {accountSession} from './lib/accountSync';
 import {platformAdmin} from './lib/platformAdmin';
 import type {AdminOperator,AdminStats,FactDraft,FactRow,QuizDraft,QuizRow,QueueRow,AdminAudit,ChoiceDraft} from './lib/platformAdmin';
 
-type Tab='dashboard'|'facts'|'quizzes'|'reviews'|'audit'|'curriculum'|'learners'|'analytics'|'settings';
+type Tab='dashboard'|'facts'|'quizzes'|'reviews'|'audit';
 const emptyFact:FactDraft={key:'',subject:'Science',emoji:'💡',en:'',fil:'',explore:true,grades:[7],sourceTitle:'',sourceUrl:''};
 const emptyQuiz:QuizDraft={factId:0,en:'',fil:'',explanationEn:'',explanationFil:'',
  choices:[{en:'',fil:'',correct:true},{en:'',fil:'',correct:false},{en:'',fil:'',correct:false}]};
 const tabs:{id:Tab;icon:string;label:string}[]=[
  {id:'dashboard',icon:'📊',label:'Dashboard'},{id:'facts',icon:'📚',label:'Facts & Sources'},
  {id:'quizzes',icon:'🧠',label:'Quiz Bank'},{id:'reviews',icon:'✅',label:'Review Queue'},
- {id:'audit',icon:'🛡️',label:'Audit Log'},
- {id:'curriculum',icon:'🎓',label:'Curriculum'},
- {id:'learners',icon:'👥',label:'Learners'},
- {id:'analytics',icon:'📈',label:'Analytics'},
- {id:'settings',icon:'⚙️',label:'Platform Settings'}
+ {id:'audit',icon:'🛡️',label:'Audit Log'}
 ];
 const subjects=['Science','AP','MAPEH','Filipino','Math','TLE'];
 export default function AdminApp(){
@@ -39,7 +33,6 @@ export default function AdminApp(){
  const canEdit=Boolean(operator?.roles.some(r=>['SUPER_ADMIN','CONTENT_ADMIN','EDITOR'].includes(r)));
  const canReview=Boolean(operator?.roles.some(r=>['SUPER_ADMIN','CONTENT_ADMIN','REVIEWER'].includes(r)));
  const canPublish=Boolean(operator?.roles.some(r=>['SUPER_ADMIN','CONTENT_ADMIN'].includes(r)));
- const signOut=()=>{const session=accountSession.get();if(!session)return;void logoutAccount(session.token).then(()=>window.location.assign("/admin")).catch(e=>setMessage(e instanceof Error?e.message:"Could not sign out"));};
  const refresh=useCallback(async()=>{
    const [a,b,c,d,e]=await Promise.all([
     platformAdmin.dashboard(),platformAdmin.facts(),platformAdmin.quizzes(),
@@ -116,17 +109,16 @@ export default function AdminApp(){
    </div>
   </article>;
  };
- if(!operator)return <main className="admin-login"><h1>🛡️ Alam Mo Ba? Platform Admin</h1><p role="alert">{blocked}</p><AdminSignIn/><a href="/">Return to learner app</a><p>Admin privileges must be granted through a trusted operator. Learner and guest accounts cannot self-promote.</p></main>;
+ if(!operator)return <main className="admin-login"><h1>🛡️ Alam Mo Ba? Platform Admin</h1><p role="alert">{blocked}</p><a href="/">Return to learner app</a><p>Admin privileges must be granted through a trusted operator. Learner and guest accounts cannot self-promote.</p></main>;
  return <div className="admin-shell">
   <aside className="admin-side">
    <a className="admin-logo" href="/admin">💡 Alam Mo Ba?<small>Platform administration</small></a>
    <nav aria-label="Platform admin navigation">{tabs.map(x=><button key={x.id} aria-current={tab===x.id?'page':undefined} className={tab===x.id?'selected':''} onClick={()=>{setTab(x.id);setMessage('');}}>{x.icon} {x.label}</button>)}</nav>
-   <div className="admin-user"><small>👤 Verified operator</small><strong>{operator.roles.join(' · ')}</strong><a href="/">Learner app ↗</a></div>
+   <div className="admin-user"><small>Verified operator</small><strong>{operator.roles.join(' · ')}</strong><a href="/">Learner app ↗</a></div>
   </aside>
   <div className="admin-main">
-   <header className="admin-top"><div><small>Content operations</small><h1>{tabs.find(x=>x.id===tab)?.label}</h1></div><div className="admin-top-actions"><span className="admin-restricted-label">🔒 Restricted workspace</span><button type="button" onClick={signOut}>Sign out</button></div></header>
+   <header className="admin-top"><div><small>Content operations</small><h1>{tabs.find(x=>x.id===tab)?.label}</h1></div><div>🔒 Restricted workspace</div></header>
    {message&&<p className="admin-notice" role="status" aria-live="polite">{message}</p>}
-   {(tab==='curriculum'||tab==='learners'||tab==='analytics'||tab==='settings')&&<AdminOperations tab={tab} roles={operator.roles}/>}
    {tab==='dashboard'&&<><div className="admin-stats">{[
     ['Total facts',stats?.facts||0],['Published facts',stats?.publishedFacts||0],
     ['Pending facts',stats?.pendingFacts||0],['Quiz questions',stats?.quizzes||0],

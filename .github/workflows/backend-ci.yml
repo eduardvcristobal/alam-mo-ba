@@ -1,4 +1,4 @@
-name: M1.3 Admin & Guest-Rate-Limit Verification
+name: M1.3 Backend & Editorial Verification
 
 on:
   push:

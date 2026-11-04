@@ -1,4 +1,4 @@
-name: M1.1 Frontend Verification
+name: M1.3 Admin Frontend Verification
 on:
   push:
     branches: [main, 'feature/**']
@@ -25,7 +25,10 @@ jobs:
         run: npm test
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser guest learning tests
+      - name: Browser guest learning and platform admin tests
+        env:
+          VITE_ADMIN_LOGIN_ENABLED: 'true'
+          VITE_ADMIN_GOOGLE_CLIENT_ID: ci-only-web-client
         run: npm run test:e2e
       - name: Save Playwright visual evidence
         if: always()
