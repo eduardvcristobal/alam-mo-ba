@@ -1,0 +1,497 @@
+[
+  {
+    "id": 1,
+    "g": 7,
+    "s": "Science",
+    "e": "🧊",
+    "en": "Water expands when it freezes, so ice takes up about 9% more space than the water it came from, and it floats.",
+    "fil": "Lumalaki ang tubig kapag nagyeyelo, kaya halos 9% na mas malaki ang espasyong kinukuha ng yelo kaysa sa tubig na pinagmulan nito, at lumulutang ito.",
+    "q": {
+      "en": "Why does ice float on water?",
+      "fil": "Bakit lumulutang ang yelo sa tubig?",
+      "o": [
+        [
+          "It is less dense than liquid water",
+          "Mas mababa ang densidad nito kaysa sa likidong tubig"
+        ],
+        [
+          "It is heavier than water",
+          "Mas mabigat ito kaysa sa tubig"
+        ],
+        [
+          "Cold air lifts it up",
+          "Itinataas ito ng malamig na hangin"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "Frozen water molecules form an open structure, so the same mass takes up more space.",
+        "fil": "Maluwag ang ayos ng mga molekula ng nagyeyelong tubig, kaya mas malaki ang espasyong kinukuha ng parehong masa."
+      }
+    }
+  },
+  {
+    "id": 2,
+    "g": 7,
+    "s": "AP",
+    "e": "🏝️",
+    "en": "The Philippines has 7,641 islands, according to the national mapping agency NAMRIA.",
+    "fil": "May 7,641 na isla ang Pilipinas, ayon sa NAMRIA, ang pambansang ahensiya sa pagmamapa.",
+    "q": {
+      "en": "About how many islands does the Philippines have?",
+      "fil": "Mga ilang isla ang mayroon ang Pilipinas?",
+      "o": [
+        [
+          "More than 7,000",
+          "Mahigit 7,000"
+        ],
+        [
+          "About 1,100",
+          "Mga 1,100"
+        ],
+        [
+          "More than 17,000",
+          "Mahigit 17,000"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "The official count is 7,641, which makes the country one of the largest archipelagos in the world.",
+        "fil": "Ang opisyal na bilang ay 7,641, kaya isa ang Pilipinas sa pinakamalalaking kapuluan sa mundo."
+      }
+    }
+  },
+  {
+    "id": 3,
+    "g": 7,
+    "s": "MAPEH",
+    "e": "🪶",
+    "en": "Tinikling is a traditional Philippine dance inspired by the tikling bird, as dancers step between moving bamboo poles.",
+    "fil": "Ang tinikling ay tradisyonal na sayaw ng Pilipinas na hango sa ibong tikling, habang humahakbang ang mga mananayaw sa pagitan ng gumagalaw na kawayan.",
+    "q": {
+      "en": "What inspired the tinikling dance?",
+      "fil": "Ano ang pinagmulan ng inspirasyon ng tinikling?",
+      "o": [
+        [
+          "The movements of the tikling bird",
+          "Ang galaw ng ibong tikling"
+        ],
+        [
+          "Waves of the sea",
+          "Ang alon ng dagat"
+        ],
+        [
+          "Planting rice",
+          "Ang pagtatanim ng palay"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "Dancers copy how the bird dodges bamboo traps in the rice fields.",
+        "fil": "Ginagaya ng mga mananayaw ang pag-iwas ng ibon sa mga patibong na kawayan sa palayan."
+      }
+    }
+  },
+  {
+    "id": 4,
+    "g": 8,
+    "s": "Science",
+    "e": "⚡",
+    "en": "A lightning bolt can heat the air around it to about 30,000°C, several times hotter than the surface of the Sun.",
+    "fil": "Kayang painitin ng kidlat ang hangin sa paligid nito hanggang mga 30,000°C, mas mainit nang ilang beses kaysa sa ibabaw ng Araw.",
+    "q": {
+      "en": "Compared with the Sun’s surface (about 5,500°C), lightning is…",
+      "fil": "Kung ikukumpara sa ibabaw ng Araw (mga 5,500°C), ang kidlat ay…",
+      "o": [
+        [
+          "Several times hotter",
+          "Mas mainit nang ilang beses"
+        ],
+        [
+          "Cooler",
+          "Mas malamig"
+        ],
+        [
+          "About the same",
+          "Halos pareho"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "The air in a lightning channel heats up for a split second, which is why you hear thunder.",
+        "fil": "Sandaling umiinit nang matindi ang hangin sa daanan ng kidlat, kaya may kulog."
+      }
+    }
+  },
+  {
+    "id": 5,
+    "g": 8,
+    "s": "Filipino",
+    "e": "✍️",
+    "en": "Baybayin is an ancient Philippine writing system that was used long before the Spanish arrived.",
+    "fil": "Ang baybayin ay sinaunang sistema ng pagsulat sa Pilipinas na ginamit bago pa dumating ang mga Espanyol.",
+    "q": {
+      "en": "Baybayin is…",
+      "fil": "Ang baybayin ay…",
+      "o": [
+        [
+          "An ancient writing system",
+          "Isang sinaunang sistema ng pagsulat"
+        ],
+        [
+          "A traditional dance",
+          "Isang tradisyonal na sayaw"
+        ],
+        [
+          "A type of boat",
+          "Isang uri ng bangka"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "Each character stands for a consonant with a vowel sound, not a single letter.",
+        "fil": "Ang bawat tanda ay kumakatawan sa katinig na may kasamang patinig, hindi iisang titik."
+      }
+    }
+  },
+  {
+    "id": 6,
+    "g": 8,
+    "s": "AP",
+    "e": "🌋",
+    "en": "The Philippines sits on the Pacific Ring of Fire and has 24 active volcanoes, according to PHIVOLCS.",
+    "fil": "Nasa Pacific Ring of Fire ang Pilipinas at may 24 na aktibong bulkan, ayon sa PHIVOLCS.",
+    "q": {
+      "en": "Why does the Philippines have many volcanoes and earthquakes?",
+      "fil": "Bakit maraming bulkan at lindol sa Pilipinas?",
+      "o": [
+        [
+          "It lies on the Pacific Ring of Fire",
+          "Nasa Pacific Ring of Fire ito"
+        ],
+        [
+          "It is near the North Pole",
+          "Malapit ito sa North Pole"
+        ],
+        [
+          "Because of typhoons",
+          "Dahil sa mga bagyo"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "The Ring of Fire is where tectonic plates meet, so volcanic and earthquake activity is frequent.",
+        "fil": "Dito nagtatagpo ang mga tectonic plate, kaya madalas ang pagputok ng bulkan at paglindol."
+      }
+    }
+  },
+  {
+    "id": 7,
+    "g": 9,
+    "s": "Science",
+    "e": "🧬",
+    "en": "Any two people share about 99.9% of their DNA.",
+    "fil": "Humigit-kumulang 99.9% ng DNA ay magkapareho sa alinmang dalawang tao.",
+    "q": {
+      "en": "About how much DNA do any two people share?",
+      "fil": "Gaano karaming DNA ang magkapareho sa alinmang dalawang tao?",
+      "o": [
+        [
+          "About 99.9%",
+          "Humigit-kumulang 99.9%"
+        ],
+        [
+          "About 75%",
+          "Humigit-kumulang 75%"
+        ],
+        [
+          "About 50%",
+          "Humigit-kumulang 50%"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "The tiny 0.1% difference helps explain why each person is unique.",
+        "fil": "Ang maliit na 0.1% na pagkakaiba ang tumutulong ipaliwanag kung bakit natatangi ang bawat tao."
+      }
+    }
+  },
+  {
+    "id": 8,
+    "g": 9,
+    "s": "Math",
+    "e": "🔢",
+    "en": "Pi (π) is irrational: its decimal digits never end and never repeat.",
+    "fil": "Ang pi (π) ay irasyonal na bilang: hindi nagtatapos at hindi umuulit ang mga digit nito sa desimal.",
+    "q": {
+      "en": "Which statement about π is true?",
+      "fil": "Alin ang tama tungkol sa π?",
+      "o": [
+        [
+          "Its decimals never end or repeat",
+          "Hindi nagtatapos o umuulit ang desimal nito"
+        ],
+        [
+          "It equals exactly 22/7",
+          "Eksaktong 22/7 ito"
+        ],
+        [
+          "It ends after 10 digits",
+          "Nagtatapos ito pagkatapos ng 10 digit"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "22/7 is only a close estimate of π, not its exact value.",
+        "fil": "Ang 22/7 ay malapit na tantiya lamang ng π, hindi ang eksaktong halaga nito."
+      }
+    }
+  },
+  {
+    "id": 9,
+    "g": 9,
+    "s": "TLE",
+    "e": "💻",
+    "en": "In 1971, Ray Tomlinson sent the first email between two computers and chose the @ symbol to separate the user name from the computer name.",
+    "fil": "Noong 1971, ipinadala ni Ray Tomlinson ang unang email sa pagitan ng dalawang computer, at pinili niya ang simbolong @ para ihiwalay ang pangalan ng user sa pangalan ng computer.",
+    "q": {
+      "en": "Which symbol did Tomlinson choose for email addresses?",
+      "fil": "Anong simbolo ang pinili ni Tomlinson para sa email address?",
+      "o": [
+        [
+          "@",
+          "@"
+        ],
+        [
+          "#",
+          "#"
+        ],
+        [
+          "&",
+          "&"
+        ]
+      ],
+      "a": 0,
+      "x": {
+        "en": "The @ sign reads as “at”, so user@computer means a user at a computer.",
+        "fil": "Binabasa ang @ bilang “at”, kaya ang user@computer ay tumutukoy sa user na nasa isang computer."
+      }
+    }
+  },
+  {
+    "id": 10,
+    "g": 7,
+    "s": "Science",
+    "e": "🐙",
+    "en": "An octopus has three hearts and blue blood.",
+    "fil": "Ang pugita ay may tatlong puso at asul na dugo."
+  },
+  {
+    "id": 11,
+    "g": 7,
+    "s": "AP",
+    "e": "🌊",
+    "en": "The Philippine Trench, off the eastern coast, is more than 10,000 meters deep, one of the deepest parts of the ocean.",
+    "fil": "Ang Philippine Trench sa silangan ng bansa ay mahigit 10,000 metro ang lalim, isa sa pinakamalalalim na bahagi ng karagatan."
+  },
+  {
+    "id": 12,
+    "g": 7,
+    "s": "Math",
+    "e": "0️⃣",
+    "en": "The number zero, as we use it today, developed in ancient India.",
+    "fil": "Ang bilang na sero na ginagamit natin ngayon ay nabuo sa sinaunang India."
+  },
+  {
+    "id": 13,
+    "g": 7,
+    "s": "Filipino",
+    "e": "📖",
+    "en": "Filipino is based mainly on Tagalog and, together with English, is one of the two official languages of the Philippines.",
+    "fil": "Ang Filipino ay nakabatay higit sa lahat sa Tagalog at, kasama ng Ingles, isa sa dalawang opisyal na wika ng Pilipinas."
+  },
+  {
+    "id": 14,
+    "g": 7,
+    "s": "Science",
+    "e": "🦷",
+    "en": "Tooth enamel is the hardest substance in the human body.",
+    "fil": "Ang enamel ng ngipin ang pinakamatigas na bahagi ng katawan ng tao."
+  },
+  {
+    "id": 15,
+    "g": 7,
+    "s": "AP",
+    "e": "🏔️",
+    "en": "Mount Apo in Mindanao is the highest mountain in the Philippines, at about 2,954 meters above sea level.",
+    "fil": "Ang Bundok Apo sa Mindanao ang pinakamataas na bundok sa Pilipinas, na may taas na mga 2,954 metro mula sa antas ng dagat."
+  },
+  {
+    "id": 16,
+    "g": 7,
+    "s": "TLE",
+    "e": "🖱️",
+    "en": "The first computer mouse was made of wood. Douglas Engelbart and his team built it in the 1960s.",
+    "fil": "Yari sa kahoy ang unang computer mouse. Ginawa ito nina Douglas Engelbart at ng kanyang koponan noong dekada 1960."
+  },
+  {
+    "id": 17,
+    "g": 7,
+    "s": "MAPEH",
+    "e": "🎶",
+    "en": "The kundiman is a traditional Filipino love song.",
+    "fil": "Ang kundiman ay tradisyonal na awit ng pag-ibig sa Pilipinas."
+  },
+  {
+    "id": 18,
+    "g": 7,
+    "s": "Science",
+    "e": "🔊",
+    "en": "Sound travels about four times faster in water than in air.",
+    "fil": "Halos apat na beses na mas mabilis ang paglalakbay ng tunog sa tubig kaysa sa hangin."
+  },
+  {
+    "id": 19,
+    "g": 8,
+    "s": "Science",
+    "e": "☀️",
+    "en": "Sunlight takes about 8 minutes to reach Earth.",
+    "fil": "Mga 8 minuto bago maabot ng sikat ng araw ang Daigdig."
+  },
+  {
+    "id": 20,
+    "g": 8,
+    "s": "AP",
+    "e": "🌾",
+    "en": "The Rice Terraces of the Philippine Cordilleras, including those in Banaue, are a UNESCO World Heritage Site.",
+    "fil": "Ang mga Hagdan-hagdang Palayan ng Cordillera, kasama ang sa Banaue, ay UNESCO World Heritage Site."
+  },
+  {
+    "id": 21,
+    "g": 8,
+    "s": "Math",
+    "e": "📐",
+    "en": "The angles inside any triangle always add up to 180 degrees.",
+    "fil": "Laging 180 degrees ang kabuuan ng mga anggulo sa loob ng anumang tatsulok."
+  },
+  {
+    "id": 22,
+    "g": 8,
+    "s": "Filipino",
+    "e": "🗣️",
+    "en": "More than 170 languages are spoken in the Philippines.",
+    "fil": "Mahigit 170 wika ang sinasalita sa Pilipinas."
+  },
+  {
+    "id": 23,
+    "g": 8,
+    "s": "Science",
+    "e": "🐒",
+    "en": "Each eye of a Philippine tarsier is about as big as its whole brain.",
+    "fil": "Halos kasinlaki ng buong utak ng tarsier ng Pilipinas ang bawat mata nito."
+  },
+  {
+    "id": 24,
+    "g": 8,
+    "s": "TLE",
+    "e": "🌐",
+    "en": "The first website went public in 1991, created by Tim Berners-Lee at CERN.",
+    "fil": "Noong 1991 inilunsad sa publiko ang unang website, na nilikha ni Tim Berners-Lee sa CERN."
+  },
+  {
+    "id": 25,
+    "g": 8,
+    "s": "MAPEH",
+    "e": "🎨",
+    "en": "Juan Luna’s painting Spoliarium won a gold medal at the 1884 Madrid Exposition.",
+    "fil": "Nanalo ng gintong medalya ang Spoliarium ni Juan Luna sa Madrid Exposition noong 1884."
+  },
+  {
+    "id": 26,
+    "g": 8,
+    "s": "AP",
+    "e": "🚢",
+    "en": "Ferdinand Magellan reached the Philippines in 1521 and died in the Battle of Mactan.",
+    "fil": "Dumating si Ferdinand Magellan sa Pilipinas noong 1521 at namatay sa Labanan sa Mactan."
+  },
+  {
+    "id": 27,
+    "g": 8,
+    "s": "Science",
+    "e": "🎋",
+    "en": "Some bamboo species can grow nearly a meter in a single day.",
+    "fil": "May ilang uri ng kawayan na kayang tumubo nang halos isang metro sa loob ng isang araw."
+  },
+  {
+    "id": 28,
+    "g": 9,
+    "s": "Science",
+    "e": "💎",
+    "en": "Diamond and pencil graphite are both made of carbon, but their atoms are arranged differently.",
+    "fil": "Parehong gawa sa carbon ang diamante at grapayt ng lapis, ngunit magkaiba ang ayos ng kanilang mga atomo."
+  },
+  {
+    "id": 29,
+    "g": 9,
+    "s": "AP",
+    "e": "🇵🇭",
+    "en": "The Philippines declared independence from Spain on June 12, 1898.",
+    "fil": "Ipinahayag ng Pilipinas ang kalayaan mula sa Espanya noong Hunyo 12, 1898."
+  },
+  {
+    "id": 30,
+    "g": 9,
+    "s": "Math",
+    "e": "🌻",
+    "en": "In the Fibonacci sequence (0, 1, 1, 2, 3, 5, 8…), each number is the sum of the two before it.",
+    "fil": "Sa Fibonacci sequence (0, 1, 1, 2, 3, 5, 8…), ang bawat bilang ay kabuuan ng dalawang naunang bilang."
+  },
+  {
+    "id": 31,
+    "g": 9,
+    "s": "Filipino",
+    "e": "📚",
+    "en": "Francisco Balagtas wrote Florante at Laura, one of the most famous poems in Filipino literature.",
+    "fil": "Isinulat ni Francisco Balagtas ang Florante at Laura, isa sa pinakakilalang tula sa panitikang Filipino."
+  },
+  {
+    "id": 32,
+    "g": 9,
+    "s": "Science",
+    "e": "🧲",
+    "en": "Earth’s magnetic field helps protect living things from charged particles from the Sun.",
+    "fil": "Tinutulungan ng magnetic field ng Daigdig na protektahan ang mga nabubuhay na bagay laban sa mga naka-kargang particle mula sa Araw."
+  },
+  {
+    "id": 33,
+    "g": 9,
+    "s": "TLE",
+    "e": "🤖",
+    "en": "The word robot comes from the Czech word robota, meaning forced labor. It was first used in a 1920 play.",
+    "fil": "Nagmula ang salitang robot sa salitang Czech na robota, na nangangahulugang sapilitang paggawa. Unang ginamit ito sa isang dula noong 1920."
+  },
+  {
+    "id": 34,
+    "g": 9,
+    "s": "MAPEH",
+    "e": "🥋",
+    "en": "Arnis is the national sport and martial art of the Philippines.",
+    "fil": "Ang arnis ang pambansang isport at martial art ng Pilipinas."
+  },
+  {
+    "id": 35,
+    "g": 9,
+    "s": "AP",
+    "e": "🏙️",
+    "en": "Manila is one of the most densely populated cities in the world.",
+    "fil": "Ang Maynila ay isa sa mga pinakasiksik na lungsod sa mundo."
+  },
+  {
+    "id": 36,
+    "g": 9,
+    "s": "Science",
+    "e": "🧠",
+    "en": "The human brain is only about 2% of body weight but uses about 20% of the body’s energy.",
+    "fil": "Mga 2% lamang ng timbang ng katawan ang utak ng tao, ngunit gumagamit ito ng mga 20% ng enerhiya ng katawan."
+  }
+]

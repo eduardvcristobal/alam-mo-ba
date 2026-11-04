@@ -1,0 +1,10 @@
+export type Mode='student'|'explore';
+export type Language='en'|'fil';
+export type Grade=7|8|9|'all';
+export type Tab='home'|'learn'|'discover'|'quiz'|'progress'|'saved'|'profile';
+export type Question={en:string;fil:string;o:[string,string][];a:number;x:{en:string;fil:string}};
+export type Fact={id:number;g:number;s:string;e:string;en:string;fil:string;q?:Question};
+export type Attempt={date:string;type:string;score:number;total:number;questionIds:number[];wrong:number[]};
+export type Preferences={mode:Mode|null;lang:Language;grade:Grade;category:string;quizCount:number;theme:'auto'|'light'|'dark';saved:number[];learned:number[];streak:number;lastLearned:string;attempts:Attempt[]};
+export type QuizItem={fact:Fact;order:number[];hidden:number[];picked:number|null;submitted:boolean};
+export type QuizSession={type:'daily'|'mixed'|'review';items:QuizItem[];index:number;score:number;wrong:number[];lifelineUsed:boolean};
