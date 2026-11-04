@@ -47,7 +47,7 @@ public class AdminWorkflowController {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Source verification requires in-review content");
         if(fact.author()==null || reviewer.equals(fact.author()))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Independent source reviewer required");
-        if(!exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0 AND checked_at IS NOT NULL",id))
+        if(!exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0",id))
             throw AdminContentController.bad("HTTPS source is required");
         jdbc.update("UPDATE content_source SET checked_at=NOW() WHERE fact_id=? AND checked_at IS NULL",id);
         access.audit(reviewer,"VERIFY_SOURCE","FACT",id);
@@ -106,8 +106,8 @@ public class AdminWorkflowController {
             if(!exists("SELECT 1 FROM content_fact_translation WHERE fact_id=? AND locale='en' AND length(trim(body))>0",id)||
                !exists("SELECT 1 FROM content_fact_translation WHERE fact_id=? AND locale='fil' AND length(trim(body))>0",id)||
                !exists("SELECT 1 FROM content_fact_audience WHERE fact_id=?",id)||
-               !exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0",id))
-                throw AdminContentController.bad("Verified bilingual facts require audience and HTTPS source");
+               !exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0 AND checked_at IS NOT NULL",id))
+                throw AdminContentController.bad("Bilingual facts require an independently checked HTTPS source");
         } else {
             if(!exists("SELECT 1 FROM quiz_question_translation WHERE question_id=? AND locale='en'",id)||
                !exists("SELECT 1 FROM quiz_question_translation WHERE question_id=? AND locale='fil'",id)||
