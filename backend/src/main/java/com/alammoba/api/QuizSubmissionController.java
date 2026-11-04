@@ -63,8 +63,8 @@ public class QuizSubmissionController {
                               WHERE s.fact_id=f.id AND s.checked_at IS NOT NULL)
                   AND EXISTS (SELECT 1 FROM content_fact_audience a
                               WHERE a.fact_id=f.id AND a.audience=?
-                              AND (? IS NULL OR a.grade_level=?))
-                  AND (? IS NULL OR f.subject_code=?)
+                              AND (CAST(? AS INTEGER) IS NULL OR a.grade_level=?))
+                  AND (CAST(? AS VARCHAR) IS NULL OR f.subject_code=?)
                 """, (rs, row) -> rs.getBoolean(1),
                 answer.optionId(), answer.questionId(), audience, submission.grade(),
                 submission.grade(), submission.subject(), submission.subject());
