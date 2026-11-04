@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -28,10 +29,13 @@ public class AccountIdentityController {
     private static final SecureRandom RANDOM=new SecureRandom();
     private final JdbcTemplate jdbc;
     private final GoogleIdentityVerifier verifier;
+    private final boolean registrationEnabled;
 
-    public AccountIdentityController(JdbcTemplate jdbc, GoogleIdentityVerifier verifier) {
+    public AccountIdentityController(JdbcTemplate jdbc, GoogleIdentityVerifier verifier,
+         @Value("${app.account.registration-enabled:false}") boolean registrationEnabled) {
         this.jdbc=jdbc;
         this.verifier=verifier;
+        this.registrationEnabled=registrationEnabled;
     }
 
     public record Challenge(String nonce, Instant expiresAt) {}
@@ -41,6 +45,7 @@ public class AccountIdentityController {
 
     @PostMapping("/google/challenge")
     public ResponseEntity<Challenge> challenge() {
+        requireRegistrationEnabled();
         String nonce=randomToken();
         Instant expires=Instant.now().plus(5,ChronoUnit.MINUTES);
         jdbc.update("INSERT INTO learning_login_challenge (id,nonce_sha256,expires_at) VALUES (?,?,?)",
@@ -51,6 +56,7 @@ public class AccountIdentityController {
     @Transactional
     @PostMapping("/google")
     public ResponseEntity<AccountSession> login(@RequestBody GoogleLogin input) {
+        requireRegistrationEnabled();
         if(input==null || input.nonce()==null || !input.nonce().matches("[A-Za-z0-9_-]{43}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid login challenge");
         }
@@ -116,6 +122,11 @@ public class AccountIdentityController {
             """,(rs,i)->rs.getObject(1,UUID.class),digest(header.substring(7)))
             .stream().findFirst().orElseThrow(()->
                 new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Account session expired or revoked"));
+    }
+
+    private void requireRegistrationEnabled() {
+        if(!registrationEnabled)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+            "Account registration is disabled pending privacy acceptance");
     }
 
     static String randomToken() {
