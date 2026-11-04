@@ -23,3 +23,7 @@ jobs:
         run: npm run build
       - name: Quiz unit tests
         run: npm test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser guest learning tests
+        run: npm run test:e2e
