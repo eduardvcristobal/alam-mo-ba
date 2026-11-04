@@ -1,4 +1,3 @@
-frontend/src/App.tsx
 import {useEffect,useMemo,useState} from 'react';
 import GuestBackup from './components/GuestBackup';
 import {contentApi} from './lib/contentApi';

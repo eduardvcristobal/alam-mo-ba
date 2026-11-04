@@ -41,7 +41,7 @@ test('Learn searches published and sample facts separately',async({page})=>{
  await page.getByRole('button',{name:/Discover/}).click();
  await expect(page.getByRole('heading',{name:'Verified facts'})).toBeVisible();
  await expect(page.getByText('Verified science content for CI').first()).toBeVisible();
- await page.getByRole('searchbox',{name:'Search facts'}).fill('Verified science');
+ await page.getByRole('textbox',{name:'Search facts'}).fill('Verified science');
  await expect(page.getByText('Verified science content for CI').first()).toBeVisible();
  await expect(page.getByText('No sample facts match your search.')).toBeVisible();
 });
@@ -55,15 +55,15 @@ test('offline content shows sample fallback and retry can recover',async({page})
  await page.reload();
  await page.getByRole('button',{name:/Explore Mode/}).click();
  await expect(page.getByText('Sample · API unavailable · unverified')).toBeVisible();
- await page.getByRole('button',{name:'Retry content connection'}).click();
  failed=false;
+ await page.getByRole('button',{name:'Retry content connection'}).click();
  await expect(page.getByText('Verified Fact of the Day')).toBeVisible();
 });
 test('connected API with no matching facts explains the empty state',async({page})=>{
  await page.getByRole('button',{name:/Student Mode/}).click();
  await page.getByRole('combobox',{name:'Grade'}).selectOption('8');
  await page.getByRole('button',{name:/Learn/}).click();
- await expect(page.getByText('No verified facts match these filters yet.')).toBeVisible();
+ await expect(page.getByText('No verified facts match these filters yet.',{exact:true}).first()).toBeVisible();
 });
 test('keyboard access to guest mode and quiz answer',async({page})=>{
  await page.getByRole('button',{name:/Explore Mode/}).focus();
