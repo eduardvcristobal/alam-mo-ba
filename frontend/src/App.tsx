@@ -8,14 +8,14 @@ import type {QuizItem} from './lib/quiz';
 type Mode='student'|'explore';
 type Lang='en'|'fil';
 type Screen='home'|'learn'|'quiz'|'progress'|'saved'|'profile';
-type Preferences={mode:Mode|null;lang:Lang;grade:string;subject:string;count:number;saved:number[];learned:number[];streak:number;last:string;attempts:{score:number;total:number;date:string}[]};
+type Preferences={mode:Mode|null;lang:Lang;grade:string;subject:string;count:number;saved:number[];learned:number[];streak:number;last:string;attempts:{score:number;total:number;date:string;mode?:Mode;questionIds?:number[];wrongIds?:number[]}[]};
 const initial:Preferences={mode:null,lang:'en',grade:'7',subject:'all',count:5,saved:[],learned:[],streak:0,last:'',attempts:[]};
 const storage='alam-mo-ba-v2.1-react-guest';
 function load():Preferences{try{const v=JSON.parse(localStorage.getItem(storage)||'null');if(v&&typeof v==='object')return {...initial,...v};}catch{}return initial;}
 function today(){return new Date().toLocaleDateString('en-CA');}
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d.toLocaleDateString('en-CA');}
 const subjects=['Science','AP','MAPEH','Filipino','Math','TLE'];
-type Play={kind:'sample'|'api';type:string;items:QuizItem[];apiItems:ApiQuestion[];index:number;score:number;correct:number|null;pick:number|null;busy:boolean;historyIds:number[];feedback:string;hidden:number[];lifelineUsed:boolean};
+type Play={kind:'sample'|'api';type:string;items:QuizItem[];apiItems:ApiQuestion[];index:number;score:number;correct:number|null;pick:number|null;busy:boolean;historyIds:number[];feedback:string;hidden:number[];lifelineUsed:boolean;wrongIds:number[]};
 const Nav=({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void})=><button className={active?'active':''} onClick={onClick} aria-current={active?'page':undefined}><span>{icon}</span><small>{label}</small></button>;
 export default function App(){
  const [prefs,setPrefs]=useState<Preferences>(load);
@@ -51,14 +51,14 @@ export default function App(){
  const go=(s:Screen)=>{setScreen(s);setPlay(null);setMessage('');};
  const quizPool=samples.filter(f=>f.quiz).map(f=>f.quiz!);
  const startQuiz=(type='mixed',action:'new'|'repeat'='new')=>{
-  if(action==='repeat'&&play){setPlay({...play,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,historyIds:play.items.map(q=>q.id)});return;}
+  if(action==='repeat'&&play){setPlay({...play,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,wrongIds:[],historyIds:[...play.historyIds]});return;}
   const previous=play?.historyIds||[];
   const sample=chooseQuestions(quizPool,prefs.count,previous);
   const fresh=shuffled(questions.filter(q=>!previous.includes(q.id)));const recycled=shuffled(questions.filter(q=>previous.includes(q.id)));const live=[...fresh,...recycled].slice(0,Math.min(prefs.count,questions.length));
   if(live.length){
-   setPlay({kind:'api',type,items:[],apiItems:live,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,historyIds:live.map(x=>x.id)});
+   setPlay({kind:'api',type,items:[],apiItems:live,index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,wrongIds:[],historyIds:live.map(x=>x.id)});
   }else{
-   setPlay({kind:'sample',type,items:createQuiz(sample),apiItems:[],index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,historyIds:sample.map(q=>q.id)});
+   setPlay({kind:'sample',type,items:createQuiz(sample),apiItems:[],index:0,score:0,correct:null,pick:null,busy:false,feedback:'',hidden:[],lifelineUsed:false,wrongIds:[],historyIds:sample.map(q=>q.id)});
   }
   setScreen('quiz');
  };
@@ -68,7 +68,7 @@ export default function App(){
   const picked=play.pick;
   if(play.kind==='sample'){
    const q=play.items[play.index];const answer=q.correctIndex;
-   setPlay(p=>p?{...p,correct:answer,score:p.score+Number(answer===picked),feedback:q.explanation}:p);
+   setPlay(p=>p?{...p,correct:answer,score:p.score+Number(answer===picked),wrongIds:answer!==picked?[...p.wrongIds,q.id]:p.wrongIds,feedback:q.explanation}:p);
    return;
   }
   const q=play.apiItems[play.index];const option=q.options[picked];
@@ -77,12 +77,12 @@ export default function App(){
   try{
    const result=await contentApi.submitQuiz({mode:mode!,grade:mode==='student'&&prefs.grade!=='all'?Number(prefs.grade):undefined,subject:prefs.subject==='all'?undefined:prefs.subject,answers:[{questionId:q.id,optionId:option.id}]});
    const graded=result.answers[0];const right=q.options.findIndex(o=>o.id===graded.correctOptionId);
-   setPlay(p=>p?{...p,correct:right,score:p.score+Number(graded.correct),feedback:graded.explanations[lang]||graded.explanations.en||'',busy:false}:p);
+   setPlay(p=>p?{...p,correct:right,score:p.score+Number(graded.correct),wrongIds:graded.correct?p.wrongIds:[...p.wrongIds,q.id],feedback:graded.explanations[lang]||graded.explanations.en||'',busy:false}:p);
   }catch{setPlay(p=>p?{...p,busy:false}:p);setMessage(tr('Could not submit your answer. Please retry.','Hindi naisumite ang sagot. Subukang muli.'));}
  };
  const next=()=>{
   if(!play)return;
-  if(play.index+1>=total){update({attempts:[...prefs.attempts,{score:play.score,total,date:today()}].slice(-100)});}
+  if(play.index+1>=total){update({attempts:[...prefs.attempts,{score:play.score,total,date:today(),mode:mode!,questionIds:play.historyIds,wrongIds:play.wrongIds}].slice(-100)});}
   setPlay(p=>p?{...p,index:p.index+1,correct:null,pick:null,feedback:'',hidden:[]}:p);
  };
  const card=(f:typeof sampleFacts[number])=><article className="fact-item" key={f.id}><span className="emoji">{f.emoji}</span><div><small>{f.subject} · {tr('Grade','Baitang')} {f.grade}</small><p>{lang==='fil'?f.fil:f.en}</p><span className="sample-tag">{tr('Sample · unverified','Halimbawa · hindi beripikado')}</span><div className="actions"><button onClick={()=>markLearned(f.id)}>{prefs.learned.includes(f.id)?'✓ ':''}{tr('Learned','Natutunan')}</button><button onClick={()=>saveFact(f.id)}>{prefs.saved.includes(f.id)?'★':'☆'} {tr('Save','I-save')}</button></div></div></article>;
