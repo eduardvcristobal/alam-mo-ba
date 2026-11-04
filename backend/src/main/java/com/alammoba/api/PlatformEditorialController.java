@@ -176,8 +176,9 @@ public class PlatformEditorialController {
             """,Integer.class,id);
         if(good==null||good!=1)throw conflict("Publish and verify the parent fact before its quiz");
     }
-    private static void safeNote(String note){
+    private static String safeNote(String note){
         if(note!=null&&note.length()>1000)throw PlatformAdminContentController.bad("Review note too long");
+        return note;
     }
     private static ResponseStatusException conflict(String reason){
         return new ResponseStatusException(HttpStatus.CONFLICT,reason);
