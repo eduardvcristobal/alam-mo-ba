@@ -1,0 +1,30 @@
+import type {SampleFact} from './sample';
+/** Local-only preview content from approved V2.1; NOT verified or published to the API. */
+export const extendedSampleFacts:SampleFact[]=[
+{id:11,grade:7,subject:'AP',emoji:'🌊',en:'The Philippine Trench, off the eastern coast, is more than 10,000 meters deep, one of the deepest parts of the ocean.',fil:'Ang Philippine Trench sa silangang baybayin ay mahigit 10,000 metro ang lalim, isa sa pinakamalalalim sa karagatan.'},
+{id:12,grade:7,subject:'Math',emoji:'0️⃣',en:'The number zero, as we use it today, developed in ancient India.',fil:'Ang bilang na sero, gaya ng paggamit natin ngayon, ay umunlad sa sinaunang India.'},
+{id:13,grade:7,subject:'Filipino',emoji:'📖',en:'Filipino is based mainly on Tagalog and, together with English, is one of the two official languages of the Philippines.',fil:'Ang Filipino ay nakabatay higit sa lahat sa Tagalog at, kasama ng Ingles, isa sa dalawang opisyal na wika ng Pilipinas.'},
+{id:14,grade:7,subject:'Science',emoji:'🦷',en:'Tooth enamel is the hardest substance in the human body.',fil:'Ang enamel ng ngipin ang pinakamatigas na bahagi ng katawan ng tao.'},
+{id:15,grade:7,subject:'AP',emoji:'🏔️',en:'Mount Apo in Mindanao is the highest mountain in the Philippines, at about 2,954 meters above sea level.',fil:'Ang Bundok Apo sa Mindanao ang pinakamataas na bundok sa Pilipinas, na may taas na mga 2,954 metro mula sa antas ng dagat.'},
+{id:16,grade:7,subject:'TLE',emoji:'🖱️',en:'The first computer mouse was made of wood. Douglas Engelbart and his team built it in the 1960s.',fil:'Yari sa kahoy ang unang computer mouse. Ginawa ito nina Douglas Engelbart at ng kanyang koponan noong dekada 1960.'},
+{id:17,grade:7,subject:'MAPEH',emoji:'🎶',en:'The kundiman is a traditional Filipino love song.',fil:'Ang kundiman ay tradisyonal na awit ng pag-ibig sa Pilipinas.'},
+{id:18,grade:7,subject:'Science',emoji:'🔊',en:'Sound travels about four times faster in water than in air.',fil:'Halos apat na beses na mas mabilis ang paglalakbay ng tunog sa tubig kaysa sa hangin.'},
+{id:19,grade:8,subject:'Science',emoji:'☀️',en:'Sunlight takes about 8 minutes to reach Earth.',fil:'Mga 8 minuto bago maabot ng sikat ng araw ang Daigdig.'},
+{id:20,grade:8,subject:'AP',emoji:'🌾',en:'The Rice Terraces of the Philippine Cordilleras are a UNESCO World Heritage Site; these include the Batad and Bangaan clusters in Banaue.',fil:'Ang mga Hagdan-hagdang Palayan ng Cordillera ay UNESCO World Heritage Site; kasama rito ang Batad at Bangaan sa Banaue.'},
+{id:21,grade:8,subject:'Math',emoji:'📐',en:'The interior angles of a triangle on a flat plane add up to 180 degrees.',fil:'Ang kabuuan ng mga panloob na anggulo ng tatsulok sa patag na eroplano ay 180 degrees.'},
+{id:22,grade:8,subject:'Filipino',emoji:'🗣️',en:'More than 170 languages are spoken in the Philippines.',fil:'Mahigit 170 wika ang sinasalita sa Pilipinas.'},
+{id:23,grade:8,subject:'Science',emoji:'🐒',en:'Each eye of a Philippine tarsier is about as big as its whole brain.',fil:'Halos kasinlaki ng buong utak ng tarsier ng Pilipinas ang bawat mata nito.'},
+{id:24,grade:8,subject:'TLE',emoji:'🌐',en:'The first website went public in 1991, created by Tim Berners-Lee at CERN.',fil:'Noong 1991 inilunsad sa publiko ang unang website, na nilikha ni Tim Berners-Lee sa CERN.'},
+{id:25,grade:8,subject:'MAPEH',emoji:'🎨',en:'Juan Luna’s painting Spoliarium won a gold medal at the 1884 Madrid Exposition.',fil:'Nanalo ng gintong medalya ang Spoliarium ni Juan Luna sa Madrid Exposition noong 1884.'},
+{id:26,grade:8,subject:'AP',emoji:'🚢',en:'Ferdinand Magellan reached the Philippines in 1521 and died in the Battle of Mactan.',fil:'Dumating si Ferdinand Magellan sa Pilipinas noong 1521 at namatay sa Labanan sa Mactan.'},
+{id:27,grade:8,subject:'Science',emoji:'🎋',en:'Some bamboo species can grow nearly a meter in a single day.',fil:'May ilang uri ng kawayan na kayang tumubo nang halos isang metro sa loob ng isang araw.'},
+{id:28,grade:9,subject:'Science',emoji:'💎',en:'Diamond and pencil graphite are both made of carbon, but their atoms are arranged differently.',fil:'Parehong gawa sa carbon ang diamante at grapayt ng lapis, ngunit magkaiba ang ayos ng kanilang mga atomo.'},
+{id:29,grade:9,subject:'AP',emoji:'🇵🇭',en:'The Philippines declared independence from Spain on June 12, 1898.',fil:'Ipinahayag ng Pilipinas ang kalayaan mula sa Espanya noong Hunyo 12, 1898.'},
+{id:30,grade:9,subject:'Math',emoji:'🌻',en:'In the Fibonacci sequence (0, 1, 1, 2, 3, 5, 8…), each number is the sum of the two before it.',fil:'Sa Fibonacci sequence (0, 1, 1, 2, 3, 5, 8…), ang bawat bilang ay kabuuan ng dalawang naunang bilang.'},
+{id:31,grade:9,subject:'Filipino',emoji:'📚',en:'Francisco Balagtas wrote Florante at Laura, one of the most famous poems in Filipino literature.',fil:'Isinulat ni Francisco Balagtas ang Florante at Laura, isa sa pinakakilalang tula sa panitikang Filipino.'},
+{id:32,grade:9,subject:'Science',emoji:'🧲',en:'Earth’s magnetic field helps protect living things from charged particles from the Sun.',fil:'Tinutulungan ng magnetic field ng Daigdig na protektahan ang mga nabubuhay na bagay laban sa mga naka-kargang particle mula sa Araw.'},
+{id:33,grade:9,subject:'TLE',emoji:'🤖',en:'The word robot comes from the Czech word robota, meaning forced labor. It was first used in a 1920 play.',fil:'Nagmula ang salitang robot sa salitang Czech na robota, na nangangahulugang sapilitang paggawa. Unang ginamit ito sa isang dula noong 1920.'},
+{id:34,grade:9,subject:'MAPEH',emoji:'🥋',en:'Arnis is the national sport and martial art of the Philippines.',fil:'Ang arnis ang pambansang isport at martial art ng Pilipinas.'},
+{id:35,grade:9,subject:'AP',emoji:'🏙️',en:'Manila is one of the most densely populated cities in the world.',fil:'Ang Maynila ay isa sa mga pinakasiksik na lungsod sa mundo.'},
+{id:36,grade:9,subject:'Science',emoji:'🧠',en:'The human brain is only about 2% of body weight but uses about 20% of the body’s energy.',fil:'Mga 2% lamang ng timbang ng katawan ang utak ng tao, ngunit gumagamit ito ng mga 20% ng enerhiya ng katawan.'}
+];

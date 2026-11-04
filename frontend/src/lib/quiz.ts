@@ -1,5 +1,5 @@
-import type {Fact,QuizItem} from './types';
-export function shuffle<T>(arr:readonly T[],random:()=>number=Math.random):T[]{const out=[...arr];for(let i=out.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
-export function selectQuestions(facts:Fact[],count:number,priorIds:number[]=[],random:()=>number=Math.random):Fact[]{const available=facts.filter(f=>!!f.q);const wanted=Math.max(1,Math.min(100,Math.trunc(count)||5));const unseen=shuffle(available.filter(f=>!priorIds.includes(f.id)),random);const seen=shuffle(available.filter(f=>priorIds.includes(f.id)),random);return [...unseen,...seen].slice(0,wanted);}
-export function makeQuizItems(facts:Fact[],random:()=>number=Math.random):QuizItem[]{return facts.map(fact=>({fact,order:shuffle(fact.q!.o.map((_,i)=>i),random),hidden:[],picked:null,submitted:false}));}
-export function canRepeat(original:QuizItem[],candidate:QuizItem[]):boolean{return original.length===candidate.length&&original.every((q,i)=>q.fact.id===candidate[i].fact.id);}
+export type QuizCandidate={id:number;question:string;choices:string[];correctIndex:number;explanation:string};
+export type QuizItem=QuizCandidate & {choiceOrder:number[]};
+export function shuffled<T>(items:readonly T[], random:()=>number=Math.random):T[]{const out=[...items];for(let i=out.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
+export function chooseQuestions(pool:readonly QuizCandidate[],count:number,exclude:number[]=[],random:()=>number=Math.random):QuizCandidate[]{const size=Math.min(Math.max(1,Math.floor(count)||1),100,pool.length);const fresh=shuffled(pool.filter(q=>!exclude.includes(q.id)),random);const used=shuffled(pool.filter(q=>exclude.includes(q.id)),random);return [...fresh,...used].slice(0,size);}
+export function createQuiz(items:readonly QuizCandidate[],random:()=>number=Math.random):QuizItem[]{return items.map(q=>({...q,choiceOrder:shuffled(q.choices.map((_,i)=>i),random)}));}

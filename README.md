@@ -1,57 +1,57 @@
-# Alam Mo Ba? — M1 Development Foundation
+# Alam Mo Ba? — Did You Know + Quiz
 
-Based on the **approved Prototype V2.1** (see `reference/`), this repository begins the production migration with a React/TypeScript/Vite frontend and a Java 17/Spring Boot/PostgreSQL/Flyway backend scaffold.
+A guest-first, bilingual English/Filipino mobile-first learning platform for both **Student Mode** and **Explore Mode**.
 
-## Run the interactive frontend (no database required)
+## Run locally
 
-Prerequisites: Node.js 20+ and npm.
+Requirements: Node.js 22+, Java 17+, Maven 3.9+, Docker with Compose.
 
+### Frontend preview only (no database required)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+Open **http://localhost:5173**. You can browse 36 sample facts, nine quizzes, and guest-local progress. The API is optional for this preview; sample facts are labeled **unverified**.
 
-Open http://localhost:5173. Guest progress stays in the browser. Select **Student** or **Explore** on first launch. Use the Quiz tab to select 1–100 questions, then repeat the exact quiz or request a new set after completion. The sample question bank currently contains **9 questions** so requests above 9 are capped. "New set" prioritizes unseen questions and reuses older questions when necessary.
-
+### Full backend and PostgreSQL
+Start PostgreSQL from the repository root:
 ```bash
-npm run build
-npm test
-```
-
-## Run the backend (optional for M1 frontend)
-
-Prerequisites: Java 17+, Maven 3.9+, Docker Compose for PostgreSQL.
-
-```bash
-cp .env.example .env
-# edit .env as needed, then load it or export DB_URL / DB_USER / DB_PASSWORD
-# To start with the provided defaults, loading .env is optional.
 docker compose up -d postgres
+```
+Start Spring Boot in another terminal:
+```bash
 cd backend
+export DB_URL=jdbc:postgresql://localhost:5432/alammoba
+export DB_USER=alammoba
+export DB_PASSWORD=alammoba_dev
 mvn spring-boot:run
 ```
+Start the frontend in a third terminal using the steps above. The Vite proxy sends `/api` requests to `http://localhost:8080`. Spring Boot applies Flyway migrations automatically at startup. The application intentionally **does not** publish unreviewed sample facts into PostgreSQL.
 
-API: http://localhost:8080/api/v1/status and health http://localhost:8080/actuator/health. Spring Boot applies the initial Flyway migration when the API starts. The frontend currently reads the bundled sample content; **the backend is not yet connected to the frontend**.
+### Quality gates
+```bash
+cd frontend
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
 
-## Current M1 scope
+cd ../backend
+mvn clean verify
+```
 
-- Guest-first onboarding and switchable Student/Explore modes.
-- Fact of the day, grade/subject/topic browsing, search, saves, learning history.
-- Bilingual English/Filipino strings; light/dark theme.
-- Configurable quiz size, randomized answer order, 50:50 lifeline, final-answer and explanation flow.
-- Repeat same questions or generate another question set prioritizing unseen questions.
-- Browser-local guest state; basic Vitest quiz logic tests.
-- Spring Boot status endpoint and initial normalized content/quiz/guest session schema.
+GitHub Actions also runs a PostgreSQL 16/Flyway smoke test with isolated synthetic fixtures that verify published-content filtering and server-side quiz grading. See [M1.1 acceptance evidence](docs/M1.1-FINAL-ACCEPTANCE.md).
 
-## Not yet completed / important boundaries
+## Product behavior
 
-- Content is illustrative and not independently source-verified or DepEd-certified.
-- Server-backed facts, content review workflow, sign-in, account sync, real notifications and API-based guest migrations are future milestones.
-- API authentication, permissions, operational security hardening and production migrations are not certified.
-- No live deployment or external CI has been completed as part of this handoff.
-- The initial schema is a foundation, not a claim that all CRUD workflows exist.
+- First launch: choose Student Mode or Explore Mode, without registering.
+- Student Mode: grade and subject filters; Explore Mode: discovery and trivia browsing.
+- Bilingual EN/FIL facts, sample quizzes, local bookmarks, and streaks.
+- Quiz settings: 1–100 questions, capped to the available pool. After finishing, choose **Repeat the same questions** or **Try another question set**.
+- When the content API has verified published facts/questions, they take precedence. When no published content exists, local preview data is clearly marked **unverified**.
+- Browser localStorage stores guest progress. Accounts, cloud sync, and guest migration are scoped to M1.2.
 
-## Next development milestone
+## Branch and review policy
 
-M1.1: connect frontend to read-only published-content APIs, implement server-side filtering/pagination, and seed only verified sample content. M1.2: secure authenticated accounts and import guest progress with explicit consent. M1.3: CMS review/publishing workflow, curriculum versioning and source tracking.
+Development uses dedicated feature branches with verified commits and draft PRs against `main`. **Never merge automatically.** Editorial review, additional accessibility audits, and live release acceptance remain separate approval gates.

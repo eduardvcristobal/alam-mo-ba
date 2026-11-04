@@ -1,0 +1,83 @@
+name: M1.1 Backend Verification
+
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Verify backend
+        run: mvn -B --no-transfer-progress clean verify
+
+  postgres-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: alammoba
+          POSTGRES_USER: alammoba
+          POSTGRES_PASSWORD: alammoba_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U alammoba -d alammoba"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Run Spring Boot and Flyway
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/alammoba
+          DB_USER: alammoba
+          DB_PASSWORD: alammoba_dev
+          PGPASSWORD: alammoba_dev
+        run: |
+          mvn -B --no-transfer-progress spring-boot:run > /tmp/alammoba-api.log 2>&1 &
+          echo $! > /tmp/alammoba.pid
+          for i in $(seq 1 90); do
+            if curl --fail --silent http://localhost:8080/api/v1/content/facts?mode=explore > /tmp/facts.json; then
+              python3 -m json.tool /tmp/facts.json
+              psql -v ON_ERROR_STOP=1 -h localhost -U alammoba -d alammoba -f src/test/resources/ci_content_fixture.sql
+              python3 ci_content_smoke.py
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/alammoba.pid)" 2>/dev/null; then
+              cat /tmp/alammoba-api.log
+              exit 1
+            fi
+            sleep 2
+          done
+          cat /tmp/alammoba-api.log
+          exit 1

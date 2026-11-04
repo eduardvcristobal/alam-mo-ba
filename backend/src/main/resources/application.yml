@@ -7,14 +7,8 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/alammoba}
     username: ${DB_USER:alammoba}
     password: ${DB_PASSWORD:alammoba_dev}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
   flyway:
     enabled: true
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+app:
+  cors:
+    origin: ${CORS_ORIGIN:http://localhost:5173}
