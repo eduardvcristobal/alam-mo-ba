@@ -16,6 +16,4 @@ CREATE TABLE platform_setting (
  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 INSERT INTO platform_setting(setting_key,setting_value) VALUES
- ('content_submissions_enabled',TRUE),
- ('public_leaderboards_enabled',FALSE),
- ('platform_announcements_enabled',FALSE);
+ ('content_submissions_enabled',TRUE);
