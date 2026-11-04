@@ -38,6 +38,20 @@ code,topic=call("/admin/operations/topics","POST",editor,
     {"subject":"Science","grade":7,"en":"CI topic","fil":"Paksa ng CI"})
 assert code==200 and topic["created"],(code,topic)
 topic_id=topic["id"]
+fact_input={"key":"topic-ci-"+str(uuid.uuid4())[:8],"subject":"Science","emoji":"🧪",
+            "en":"Test curriculum content in Science.","fil":"Pagsubok sa paksang Agham.",
+            "student":True,"grade":7,"explore":False,
+            "sourceTitle":"Synthetic source","sourceUrl":"https://example.org/fixture"}
+code,fact=call("/admin/facts","POST",editor,fact_input)
+assert code==200,(code,fact)
+code,mapping=call(f"/admin/operations/topics/assign/{fact['id']}","PUT",editor,{"topicId":topic_id})
+assert code==200 and mapping["topicId"]==topic_id,(code,mapping)
+code,mappings=call("/admin/operations/topics/assignments",token=editor)
+assert code==200 and any(m["factId"]==fact["id"] for m in mappings),(code,mappings)
+code,_=call(f"/admin/workflow/fact/{fact['id']}/submit","POST",editor)
+assert code==200,code
+code,_=call(f"/admin/operations/topics/assign/{fact['id']}","PUT",editor,{"topicId":topic_id})
+assert code==400,code
 code,_=call("/admin/operations/topics","POST",editor,
     {"subject":"Science","grade":17,"en":"Invalid","fil":"Hindi tama"})
 assert code==400,code
