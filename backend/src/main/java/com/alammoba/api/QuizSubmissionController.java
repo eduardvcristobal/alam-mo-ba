@@ -81,7 +81,7 @@ public class QuizSubmissionController {
             }
             Map<String,String> explanations = new LinkedHashMap<>();
             jdbc.query("SELECT locale,explanation FROM quiz_question_translation WHERE question_id=?",
-                rs -> explanations.put(rs.getString(1), rs.getString(2)), answer.questionId());
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> { explanations.put(rs.getString(1), rs.getString(2)); }, answer.questionId());
             answers.add(new AnswerResult(answer.questionId(), correctness.get(0), correctId, explanations));
         }
         int score = (int) answers.stream().filter(AnswerResult::correct).count();
