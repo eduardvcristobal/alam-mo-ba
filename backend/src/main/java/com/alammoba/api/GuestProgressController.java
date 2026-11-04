@@ -1,5 +1,6 @@
 package com.alammoba.api;
 
+import jakarta.servlet.http.HttpServletRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -42,15 +43,17 @@ public class GuestProgressController {
     private static final Set<String> FIELDS = Set.of(
         "mode","lang","grade","subject","count","saved","learned","streak","last","attempts");
     private final JdbcTemplate jdbc;
+    private final AuthRateLimiter rateLimiter;
 
-    public GuestProgressController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public GuestProgressController(JdbcTemplate jdbc, AuthRateLimiter rateLimiter) { this.jdbc = jdbc; this.rateLimiter=rateLimiter; }
 
     public record CreatedGuest(String token, Instant expiresAt) {}
     public record VersionedState(long version, JsonNode state) {}
     public record PutState(long expectedVersion, JsonNode state) {}
 
     @PostMapping("/sessions")
-    public ResponseEntity<CreatedGuest> create() {
+    public ResponseEntity<CreatedGuest> create(HttpServletRequest request) {
+        rateLimiter.enforce(request,"guest-create",15);
         byte[] tokenBytes = new byte[32];
         RANDOM.nextBytes(tokenBytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
