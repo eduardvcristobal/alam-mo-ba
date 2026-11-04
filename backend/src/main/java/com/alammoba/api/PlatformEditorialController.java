@@ -133,8 +133,8 @@ public class PlatformEditorialController {
         if(!item.status().equals(required))throw conflict("Required "+required+" status");
     }
     static void ensureIndependentReviewer(ReviewTarget item,UUID reviewer){
-        if(item.author()!=null&&item.author().equals(reviewer))
-            throw conflict("Authors cannot approve or reject their own submissions");
+        if(item.author()==null||item.author().equals(reviewer))
+            throw conflict("An identifiable independent author is required for approval");
     }
     private void approveFact(long id,boolean sourceChecked){
         Integer translated=db.queryForObject("""
