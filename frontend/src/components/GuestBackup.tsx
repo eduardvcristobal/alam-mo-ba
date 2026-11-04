@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {createGuestSession,guestToken,mergeGuestProgress,readGuestProgress,revokeGuestSession,saveGuestProgress} from '../lib/guestCloud';
+import {createGuestSession,guestToken,GuestRateLimitError,mergeGuestProgress,readGuestProgress,revokeGuestSession,saveGuestProgress} from '../lib/guestCloud';
 import type {GuestProgress} from '../lib/guestCloud';
 const syncedProgressKey='alam-mo-ba-guest-cloud-synced-progress';
 
@@ -31,6 +31,8 @@ export default function GuestBackup({progress,onRestore,lang}:{
   if(/\b401\b/.test(detail)){
    guestToken.clear();localStorage.removeItem(syncedProgressKey);syncedProgress.current='';setConnected(false);
    setStatus(tr('This backup session expired. Enable guest backup again to continue backing up progress.','Nag-expire ang backup session. Paganahin muli ang guest backup para magpatuloy ang pag-backup ng progreso.'));
+  }else if(error instanceof GuestRateLimitError){
+   setStatus(tr(`Backup rate limited. Try again in ${error.retryAfterSeconds} seconds.`,`Nilimitahan ang backup. Subukan muli makalipas ang ${error.retryAfterSeconds} segundo.`));
   }else setStatus(detail);
  }
  function retryPending(){
@@ -68,8 +70,13 @@ export default function GuestBackup({progress,onRestore,lang}:{
     const code=match?Number(match[1]):0;
     const transient=error instanceof TypeError||code===429||code>=500||!code;
     if(transient&&retryCount.current<3){
-     retryCount.current+=1;retryAfter.current=Date.now()+1000*2**(retryCount.current-1);
-     setStatus(tr('Backup temporarily unavailable. Progress is safe here; retrying shortly…','Pansamantalang hindi magamit ang backup. Ligtas ang progreso rito; susubukang muli…'));
+     retryCount.current+=1;
+     const backoff=1000*2**(retryCount.current-1);
+     const serverWait=error instanceof GuestRateLimitError?error.retryAfterSeconds*1000:0;
+     retryAfter.current=Date.now()+Math.max(backoff,serverWait);
+     setStatus(error instanceof GuestRateLimitError
+      ?tr(`Backup rate limited. Progress is safe here; retrying in ${error.retryAfterSeconds} seconds…`,`Nilimitahan ang backup. Ligtas ang progreso rito; susubukang muli makalipas ang ${error.retryAfterSeconds} segundo…`)
+      :tr('Backup temporarily unavailable. Progress is safe here; retrying shortly…','Pansamantalang hindi magamit ang backup. Ligtas ang progreso rito; susubukang muli…'));
     }else{
      pausedFingerprint.current=fingerprint;setRetryAvailable(true);
      setStatus(tr('Could not sync yet. Progress is still saved on this device. Retry when ready.','Hindi pa ma-sync. Naka-save pa rin ang progreso sa device na ito. Subukang muli kapag handa na.'));
