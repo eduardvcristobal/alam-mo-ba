@@ -122,6 +122,10 @@ export default function AdminApp(){
       <td><Status value={f.status}/></td><td>
       {allowed('EDITOR','CONTENT_ADMIN')&&f.status!=='PUBLISHED'&&f.status!=='RETIRED'&&<button onClick={()=>editFact(f)}>Edit</button>}
       {allowed('EDITOR','CONTENT_ADMIN')&&f.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>adminApi.transition('fact',f.id,'submit'),'Fact sent for review')}>Submit</button>}
+      {allowed('EDITOR','CONTENT_ADMIN')&&f.status==='DRAFT'&&<button disabled={busy} onClick={()=>{
+       if(window.confirm('Delete this unpublished fact draft?'))
+        void run(()=>adminApi.deleteFact(f.id),'Draft fact deleted');
+      }}>Delete draft</button>}
       {allowed('CONTENT_ADMIN')&&f.status==='PUBLISHED'&&<button disabled={busy} onClick={()=>{
        if(window.confirm('Retire this published fact from the learner library?'))
         void run(()=>adminApi.transition('fact',f.id,'retire'),'Fact retired');
@@ -133,6 +137,10 @@ export default function AdminApp(){
      {questions.map(q=><tr key={q.id}><td>{q.prompt}</td><td>#{q.factId}</td><td><Status value={q.status}/></td><td>
       {allowed('EDITOR','CONTENT_ADMIN')&&['DRAFT','IN_REVIEW','APPROVED'].includes(q.status)&&<button onClick={()=>void editQuestion(q)}>Edit</button>}
       {allowed('EDITOR','CONTENT_ADMIN')&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>adminApi.transition('question',q.id,'submit'),'Question submitted')}>Submit</button>}
+      {allowed('EDITOR','CONTENT_ADMIN')&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>{
+       if(window.confirm('Delete this unpublished question draft?'))
+        void run(()=>adminApi.deleteQuestion(q.id),'Draft question deleted');
+      }}>Delete draft</button>}
       {allowed('CONTENT_ADMIN')&&q.status==='PUBLISHED'&&<button disabled={busy} onClick={()=>{
        if(window.confirm('Retire this quiz question?'))
         void run(()=>adminApi.transition('question',q.id,'retire'),'Question retired');
