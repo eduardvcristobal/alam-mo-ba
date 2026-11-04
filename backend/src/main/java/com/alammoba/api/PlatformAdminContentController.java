@@ -122,6 +122,34 @@ public class PlatformAdminContentController {
             """,(rs,n)->Map.of("id",rs.getLong(1),"factId",rs.getLong(2),
             "status",rs.getString(3),"prompt",rs.getString(4)),limit,offset));
     }
+    @GetMapping("/quizzes/{id}")
+    public ResponseEntity<?> quiz(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
+                                  @PathVariable long id) {
+        guard.require(auth);
+        var quiz=db.query("SELECT id,fact_id,status FROM quiz_question WHERE id=?",
+            (rs,n)->{
+                Map<String,Object> item=new LinkedHashMap<>();
+                item.put("id",rs.getLong(1));item.put("factId",rs.getLong(2));
+                item.put("status",rs.getString(3));return item;
+            },id).stream().findFirst().orElseThrow(PlatformAdminContentController::missing);
+        quiz.put("translations",db.query("""
+            SELECT locale,prompt,explanation FROM quiz_question_translation WHERE question_id=?
+            """,(rs,n)->Map.of("locale",rs.getString(1),"prompt",rs.getString(2),
+                               "explanation",rs.getString(3)),id));
+        quiz.put("choices",db.query("""
+            SELECT o.id,o.position,o.correct,
+                   MAX(CASE WHEN t.locale='en' THEN t.body END) AS en,
+                   MAX(CASE WHEN t.locale='fil' THEN t.body END) AS fil
+            FROM quiz_option o LEFT JOIN quiz_option_translation t ON t.option_id=o.id
+            WHERE o.question_id=? GROUP BY o.id,o.position,o.correct ORDER BY o.position
+            """,(rs,n)->{
+                Map<String,Object> item=new LinkedHashMap<>();
+                item.put("en",rs.getString("en"));item.put("fil",rs.getString("fil"));
+                item.put("correct",rs.getBoolean("correct"));return item;
+            },id));
+        return privateResponse(quiz);
+    }
+
     @Transactional
     @PostMapping("/quizzes")
     public ResponseEntity<?> createQuiz(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@RequestBody QuizDraft payload){
