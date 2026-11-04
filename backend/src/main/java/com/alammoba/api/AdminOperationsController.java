@@ -73,6 +73,41 @@ public class AdminOperationsController {
             throw AdminContentController.bad("Topic requires bilingual names, valid subject and grade");
     }
 
+    public record TopicAssignment(long topicId) {}
+    @GetMapping("/topics/assignments")
+    public ResponseEntity<List<Map<String,Object>>> assignments(
+      @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String token){
+        access.require(token);
+        return AdminContentController.privateResponse(jdbc.query("""
+          SELECT fact_id,topic_id FROM platform_fact_topic ORDER BY fact_id
+          """,(rs,i)->Map.<String,Object>of("factId",rs.getLong(1),"topicId",rs.getLong(2))));
+    }
+    @Transactional
+    @PutMapping("/topics/assign/{factId}")
+    public ResponseEntity<Map<String,Object>> assign(
+      @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String token,
+      @PathVariable long factId,@RequestBody TopicAssignment input){
+        UUID actor=access.require(token,"CONTENT_ADMIN","EDITOR");
+        if(input==null||input.topicId()<1)throw AdminContentController.bad("Topic required");
+        Integer eligible=jdbc.queryForObject("""
+          SELECT count(*) FROM content_fact f
+          JOIN platform_topic t ON t.id=?
+          JOIN platform_subject s ON s.code=t.subject_code
+          WHERE f.id=? AND f.status='DRAFT' AND f.subject_code=t.subject_code
+            AND t.enabled=true AND s.enabled=true
+            AND (NOT EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='STUDENT')
+              OR EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id
+                        AND a.audience='STUDENT' AND a.grade_level=t.grade_level))
+          """,Integer.class,input.topicId(),factId);
+        if(eligible==null||eligible!=1)throw AdminContentController.bad("Draft fact subject or grade does not match active topic");
+        jdbc.update("""
+          INSERT INTO platform_fact_topic(fact_id,topic_id) VALUES (?,?)
+          ON CONFLICT(fact_id) DO UPDATE SET topic_id=EXCLUDED.topic_id
+          """,factId,input.topicId());
+        access.audit(actor,"ASSIGN_TOPIC","FACT",factId);
+        return AdminContentController.privateResponse(Map.of("factId",factId,"topicId",input.topicId()));
+    }
+
     @GetMapping("/learners")
     public ResponseEntity<List<Map<String,Object>>> learners(
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String token,
