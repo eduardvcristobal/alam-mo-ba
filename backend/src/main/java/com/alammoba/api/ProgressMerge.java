@@ -17,6 +17,11 @@ final class ProgressMerge {
     private ProgressMerge() {}
 
     static JsonNode merge(JsonNode account,JsonNode guest) {
+        // Never silently discard unexpected/untrusted source fields.
+        if (account!=null && account.isObject() && !account.isEmpty())
+            GuestProgressController.validateState(account);
+        if (guest!=null && guest.isObject() && !guest.isEmpty())
+            GuestProgressController.validateState(guest);
         ObjectNode result = account != null && account.isObject()
             ? ((ObjectNode) account).deepCopy() : JSON.createObjectNode();
         if (guest != null && guest.isObject()) {
