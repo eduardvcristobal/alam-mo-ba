@@ -61,6 +61,12 @@ code,_=call(f"/admin/workflow/fact/{fid}/approve","POST",editor)
 assert code==403,code
 code,_=call(f"/admin/workflow/fact/{fid}/publish","POST",publisher)
 assert code==409,code
+code,_=call(f"/admin/workflow/fact/{fid}/approve","POST",reviewer)
+assert code==400,code
+code,_=call(f"/admin/workflow/fact/{fid}/verify-source","POST",editor)
+assert code==403,code
+code,verified=call(f"/admin/workflow/fact/{fid}/verify-source","POST",reviewer)
+assert code==200 and verified["sourceVerified"],(code,verified)
 code,approved=call(f"/admin/workflow/fact/{fid}/approve","POST",reviewer)
 assert code==200 and approved["status"]=="APPROVED",(code,approved)
 code,published=call(f"/admin/workflow/fact/{fid}/publish","POST",publisher)
