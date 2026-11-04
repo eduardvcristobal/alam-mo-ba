@@ -16,6 +16,7 @@ test('super admin can navigate curriculum, learner directory, analytics, setting
   if(p==='/api/v1/admin/overview')return reply({facts:12,published:9,questions:8,reviews:1});
   if(p==='/api/v1/admin/facts'||p==='/api/v1/admin/questions'||p==='/api/v1/admin/workflow/queue')return reply([]);
   if(p.endsWith('/operations/subjects'))return reply([{code:'Science',name:'Science',enabled:true}]);
+  if(p.endsWith('/operations/topics/assignments'))return reply([]);
   if(p.endsWith('/operations/topics')&&method==='POST'){topicCreated=true;return reply({id:5,created:true});}
   if(p.endsWith('/operations/topics'))return reply(topicCreated?[{id:5,subject:'Science',grade:7,en:'Earth science',fil:'Agham ng Daigdig',enabled:true}]:[]);
   if(p.endsWith('/operations/learners'))return reply([{accountId:'ci-learner-1234',status:'ACTIVE',createdAt:'2026-11-04T01:00:00Z',learnedCount:4}]);
