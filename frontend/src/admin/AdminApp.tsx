@@ -1,11 +1,12 @@
 import {useCallback,useEffect,useState} from 'react';
 import {adminApi,adminRequest} from './adminApi';
 import AdminLogin from './AdminLogin';
-import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
+import type {AdminMe,Fact,FactDraft,ManagedAccount,ManagedRole,Overview,QuestionDraft,QuestionSummary,QueueEntry,SeedCatalogItem} from './adminApi';
+import {accountSession,logoutAccount} from '../lib/accountSync';
 import './admin.css';
 
-type View='dashboard'|'facts'|'questions'|'review';
-const adminRequestVerify=(id:number)=>adminRequest('/workflow/fact/'+id+'/verify-source',{method:'POST'});
+type View='dashboard'|'facts'|'questions'|'review'|'access';
+const adminRequestVerify=(id:number)=>adminRequest<{id:number;sourceVerified:boolean}>('/workflow/fact/'+id+'/verify-source',{method:'POST'});
 const emptyFact=():FactDraft=>({key:'',subject:'Science',emoji:'💡',en:'',fil:'',student:true,grade:7,explore:true,sourceTitle:'',sourceUrl:''});
 const emptyQuiz=():QuestionDraft=>({factId:0,en:'',fil:'',explanationEn:'',explanationFil:'',
  options:[{en:'',fil:'',correct:true},{en:'',fil:'',correct:false},{en:'',fil:'',correct:false}]});
@@ -13,7 +14,8 @@ const tabs:{id:View;icon:string;title:string;subtitle:string}[]=[
  {id:'dashboard',icon:'▦',title:'Dashboard',subtitle:'Platform overview'},
  {id:'facts',icon:'▤',title:'Facts & Content',subtitle:'Bilingual knowledge library'},
  {id:'questions',icon:'◇',title:'Quiz Bank',subtitle:'Question authoring'},
- {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'}
+ {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'},
+ {id:'access',icon:'♙',title:'Access & Roles',subtitle:'Manage platform operator access'}
 ];
 export default function AdminApp(){
  const [me,setMe]=useState<AdminMe|null>(null);
@@ -22,16 +24,32 @@ export default function AdminApp(){
  const [facts,setFacts]=useState<Fact[]>([]);
  const [questions,setQuestions]=useState<QuestionSummary[]>([]);
  const [queue,setQueue]=useState<QueueEntry[]>([]);
+ const [reviewIndex,setReviewIndex]=useState(0);
+ const [verifiedSources,setVerifiedSources]=useState<Record<number,boolean>>({});
+ const [managedAccounts,setManagedAccounts]=useState<ManagedAccount[]>([]);
+ const [roleAccountId,setRoleAccountId]=useState('');
+ const [accountSearch,setAccountSearch]=useState('');
+ const [roleName,setRoleName]=useState<ManagedRole>('REVIEWER');
+ const [roleAction,setRoleAction]=useState<'GRANT'|'REVOKE'>('GRANT');
+ const [roleReason,setRoleReason]=useState('');
  const [factForm,setFactForm]=useState<FactDraft>(emptyFact);
  const [quizForm,setQuizForm]=useState<QuestionDraft>(emptyQuiz);
  const [editingFact,setEditingFact]=useState<number|null>(null);
  const [editingQuestion,setEditingQuestion]=useState<number|null>(null);
  const [showFact,setShowFact]=useState(false);
  const [showQuiz,setShowQuiz]=useState(false);
+ const [showSeedCatalog,setShowSeedCatalog]=useState(false);
+ const [seedCatalog,setSeedCatalog]=useState<SeedCatalogItem[]>([]);
+ const [selectedSeedIds,setSelectedSeedIds]=useState<string[]>([]);
+ const [loadingSeedCatalog,setLoadingSeedCatalog]=useState(false);
  const [error,setError]=useState('');
+ const [toast,setToast]=useState<{kind:'error'|'success';text:string}|null>(null);
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true);
+ const [backendUnavailable,setBackendUnavailable]=useState(false);
+ const [signingOut,setSigningOut]=useState(false);
+ const [accountMenuOpen,setAccountMenuOpen]=useState(false);
  const roles=me?.roles||[];
  const allowed=(...r:string[])=>roles.includes('SUPER_ADMIN')||r.some(role=>roles.includes(role as typeof roles[number]));
  const refresh=useCallback(async()=>{
@@ -41,19 +59,39 @@ export default function AdminApp(){
   ]);
   setStats(overview);setFacts(factRows);setQuestions(questionRows);setQueue(review);
  },[]);
- useEffect(()=>{
-  let live=true;
-  adminApi.me().then(async result=>{if(!live)return;setMe(result);await refresh();})
-   .catch(e=>{if(live)setError(e instanceof Error?e.message:'Admin access unavailable');})
-   .finally(()=>{if(live)setLoading(false);});
-  return ()=>{live=false;};
+ const validateSession=useCallback(async()=>{
+  setLoading(true);setError('');
+  try{
+   const result=await adminApi.me();setMe(result);await refresh();setBackendUnavailable(false);
+  }catch(e){
+   const networkFailure=e instanceof TypeError;
+   if(accountSession.get()&&networkFailure){setBackendUnavailable(true);setError('The backend is unavailable. Your saved admin session is still on this tab.');}
+   else{setBackendUnavailable(false);setError(e instanceof Error?e.message:'Admin access unavailable');}
+  }finally{setLoading(false);}
  },[refresh]);
+ useEffect(()=>{void validateSession();},[validateSession]);
+ useEffect(()=>{if(!toast)return;const timer=window.setTimeout(()=>setToast(null),6000);return()=>window.clearTimeout(timer);},[toast]);
+ useEffect(()=>{if(!accountMenuOpen)return;const closeOnEscape=(event:KeyboardEvent)=>{if(event.key==='Escape')setAccountMenuOpen(false);};
+  window.addEventListener('keydown',closeOnEscape);return()=>window.removeEventListener('keydown',closeOnEscape);},[accountMenuOpen]);
  const run=async(task:()=>Promise<unknown>,success:string)=>{
   if(busy)return;
   setBusy(true);setError('');setMessage('');
-  try{await task();await refresh();setMessage(success);}
-  catch(e){setError(e instanceof Error?e.message:'Request failed');}
+  try{const result=await task();await refresh();const text=typeof result==='string'?result:success;setMessage(text);setToast({kind:'success',text});}
+  catch(e){const text=e instanceof Error?e.message:'Request failed';setError(text);setToast({kind:'error',text});}
   finally{setBusy(false);}
+ };
+ useEffect(()=>{
+  if(view!=='access'||!roles.includes('SUPER_ADMIN'))return;
+  adminApi.roleAccounts().then(setManagedAccounts)
+   .catch(e=>setError(e instanceof Error?e.message:'Could not load account roles'));
+ },[view,me]);
+ const signOut=async()=>{
+  if(signingOut)return;
+  setSigningOut(true);setError('');setMessage('');
+  const token=accountSession.get()?.token||'';
+  try{if(token)await logoutAccount(token);else accountSession.clear();}
+  catch{accountSession.clear();setError('Signed out on this device, but the server could not confirm session revocation.');}
+  finally{setMe(null);setStats(null);setFacts([]);setQuestions([]);setQueue([]);setSigningOut(false);}
  };
  const editFact=(f:Fact)=>{
   setEditingFact(f.id);setFactForm({key:f.key,subject:f.subject,emoji:f.emoji||'💡',
@@ -74,6 +112,10 @@ export default function AdminApp(){
   }catch(e){setError(e instanceof Error?e.message:'Could not load quiz question');}
  };
  if(loading)return <main className="admin-gate">Loading administrator access…</main>;
+ if(backendUnavailable&&accountSession.get())return <main className="admin-gate"><div className="gate-icon">⏳</div><h1>Backend unavailable</h1>
+  <p>{error||'The server could not be reached.'}</p><p>Your saved admin session is preserved. Reconnect the backend, then retry.</p>
+  <button className="admin-primary" onClick={()=>void validateSession()}>Retry connection</button>
+  <button onClick={()=>void signOut()}>Sign out</button><a href="/">Return to learner app</a></main>;
  if(!me)return <main className="admin-gate"><div className="gate-icon">🔐</div><h1>Alam Mo Ba? Admin</h1>
   <p>Administration requires a verified account session and an explicitly assigned platform role.</p>
   <p className="admin-error" role="alert">{error||'Administrator access not available'}</p>
@@ -82,23 +124,31 @@ export default function AdminApp(){
  return <div className="admin-shell">
   <aside className="admin-side">
    <div className="admin-brand"><span>💡</span><div><b>Alam Mo Ba?</b><small>Platform Administration</small></div></div>
-   <nav aria-label="Administrator navigation">{tabs.map(tab=><button key={tab.id}
+   <nav aria-label="Administrator navigation">{tabs.filter(tab=>tab.id!=='access'||roles.includes('SUPER_ADMIN')).map(tab=><button key={tab.id}
      className={view===tab.id?'selected':''} aria-current={view===tab.id?'page':undefined}
      onClick={()=>{setView(tab.id);setError('');setMessage('');}}>
      <span className="nav-symbol">{tab.icon}</span><span>{tab.title}</span></button>)}</nav>
    <div className="admin-side-foot"><span className="online-dot"/>Authenticated Admin
-    <small>{roles.join(' · ')}</small><a href="/">← Learner application</a></div>
+    <small>{roles.join(' · ')}</small>
+    <a href="/">← Learner application</a></div>
   </aside>
   <main className="admin-main">
    <header className="admin-top">
     <div><span className="breadcrumb">Platform / {tabs.find(t=>t.id===view)?.title}</span>
      <h1>{tabs.find(t=>t.id===view)?.title}</h1>
      <p>{tabs.find(t=>t.id===view)?.subtitle}</p></div>
-    <div className="admin-user"><span className="avatar">A</span><span><b>Administrator</b>
-     <small>{roles[0]}</small></span></div>
+    <div className="admin-user"><span><b>Administrator</b><small>{roles[0]}</small></span>
+     <button className="avatar" aria-label="Open account menu" aria-haspopup="menu" aria-expanded={accountMenuOpen} onClick={()=>setAccountMenuOpen(open=>!open)}>A</button></div>
    </header>
+   {accountMenuOpen&&<><button className="account-menu-backdrop" aria-label="Close account menu" onClick={()=>setAccountMenuOpen(false)}/>
+    <div className="account-menu" role="menu"><div className="account-menu-heading"><span className="avatar">A</span><span><b>Administrator</b><small>{roles.join(' · ')}</small></span></div>
+     <button role="menuitem" disabled={signingOut} onClick={()=>{setAccountMenuOpen(false);void signOut();}}>{signingOut?'Signing out…':'Sign out'}</button>
+    </div></>}
    {error&&<p role="alert" className="admin-error">{error}</p>}
    {message&&<p role="status" className="admin-success">{message}</p>}
+   {toast&&<div className={`admin-toast toast-${toast.kind}`} role={toast.kind==='error'?'alert':'status'}>
+    <span>{toast.text}</span><button aria-label="Dismiss notification" onClick={()=>setToast(null)}>×</button>
+   </div>}
    {view==='dashboard'&&<><div className="admin-metrics">
     {[{title:'Total facts',value:stats?.facts??0,icon:'▤'},
       {title:'Published facts',value:stats?.published??0,icon:'✓'},
@@ -115,8 +165,14 @@ export default function AdminApp(){
      <button onClick={()=>setView('facts')}>View facts →</button></div>
      {facts.slice(0,5).map(f=><div key={f.id} className="admin-line"><span>{f.emoji||'💡'} {f.en||f.key}</span><Status value={f.status}/></div>)}
      {!facts.length&&<p>No facts have been authored yet.</p>}</section></>}
-   {view==='facts'&&<section className="admin-panel"><div className="panel-head"><h2>Knowledge library</h2>
-    {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingFact(null);setFactForm(emptyFact());setShowFact(true);}}>+ Add fact</button>}</div>
+   {view==='facts'&&<section className="admin-panel"><div className="panel-head"><h2>Knowledge library</h2><div className="admin-panel-actions">
+    {allowed('EDITOR','CONTENT_ADMIN')&&<button disabled={busy} onClick={()=>{
+     setLoadingSeedCatalog(true);setSelectedSeedIds([]);setShowSeedCatalog(true);
+     void adminApi.seedCatalog().then(setSeedCatalog).catch(e=>setError(e instanceof Error?e.message:'Could not load seed catalog'))
+      .finally(()=>setLoadingSeedCatalog(false));
+    }}>Seed starter facts + quizzes</button>}
+    {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingFact(null);setFactForm(emptyFact());setShowFact(true);}}>+ Add fact</button>}
+    </div></div>
     <div className="admin-scroll"><table><thead><tr><th>Fact</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>{facts.map(f=><tr key={f.id}><td><b>{f.emoji} {f.en||f.key}</b><small>{f.key}</small></td><td>{f.subject}</td>
       <td><Status value={f.status}/></td><td>
@@ -146,23 +202,74 @@ export default function AdminApp(){
         void run(()=>adminApi.transition('question',q.id,'retire'),'Question retired');
       }}>Retire</button>}
      </td></tr>)}</tbody></table></div>{!questions.length&&<p>No quiz questions created yet.</p>}</section>}
-   {view==='review'&&<section className="admin-panel"><div className="panel-head"><h2>Review and publication queue</h2><span>{queue.length} items</span></div>
-    {!allowed('REVIEWER','CONTENT_ADMIN')?<p>Reviewer role required.</p>:<div className="admin-scroll"><table><thead>
-     <tr><th>Type</th><th>Content ID</th><th>Status</th><th>Decision</th></tr></thead><tbody>{queue.map(item=>
-     <tr key={item.type+item.id}><td>{item.type}</td><td>#{item.id}</td><td><Status value={item.status}/></td><td>
-      {item.status==='IN_REVIEW'&&allowed('REVIEWER')&&<>
-       {item.type==='FACT'&&<button disabled={busy} onClick={()=>{
-        const fact=facts.find(f=>f.id===item.id);
-        if(!fact?.sourceUrl){setError('No HTTPS source is attached');return;}
-        window.open(fact.sourceUrl,'_blank','noopener,noreferrer');
-        if(window.confirm('Have you independently checked the source and the bilingual fact?')) {
-         void run(()=>adminRequestVerify(item.id),'Source verification recorded');
-        }
-       }}>Verify source</button>}
-       <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'approve'),'Independent review approved')}>Approve</button>
-       <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'reject'),'Returned to draft')}>Reject</button></>}
-      {item.status==='APPROVED'&&allowed('CONTENT_ADMIN')&&<button disabled={busy} className="admin-primary" onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish'),'Published to learners')}>Publish</button>}
-     </td></tr>)}</tbody></table>{!queue.length&&<p>No items are awaiting editorial action.</p>}</div>}</section>}
+   {view==='review'&&<section className="admin-panel review-wizard"><div className="panel-head"><div><h2>Review and publication queue</h2><span className="review-progress">{queue.length?`Item ${Math.min(reviewIndex+1,queue.length)} of ${queue.length}`:'0 items'}</span></div>
+    {queue.length>0&&<div className="wizard-controls"><button disabled={reviewIndex===0} onClick={()=>setReviewIndex(index=>Math.max(0,index-1))}>← Previous</button><button disabled={reviewIndex>=queue.length-1} onClick={()=>setReviewIndex(index=>Math.min(queue.length-1,index+1))}>Next →</button></div>}</div>
+    {!allowed('REVIEWER','CONTENT_ADMIN')?<p>Review Queue requires the REVIEWER, CONTENT_ADMIN, or SUPER_ADMIN role.</p>:<>
+     {allowed('CONTENT_ADMIN')&&!allowed('REVIEWER')&&<p className="review-meta">You can publish approved content here. A REVIEWER or SUPER_ADMIN must verify and approve items that are still in review.</p>}
+     <div className="review-list">{queue.slice(Math.min(reviewIndex,Math.max(0,queue.length-1)),Math.min(reviewIndex,Math.max(0,queue.length-1))+1).map(item=>{
+     const fact=item.type==='FACT'?facts.find(f=>f.id===item.id):facts.find(f=>f.id===questions.find(q=>q.id===item.id)?.factId);
+     const sourceVerified=Boolean(fact?.sourceVerified||verifiedSources[item.id]);
+     return <article className="review-item" key={item.type+item.id}>
+      <div className="review-item-head"><div><span className="review-type">{item.type==='FACT'?'Fact':'Quiz question'} · #{item.id}</span>
+       <Status value={item.status}/></div></div>
+      {item.type==='FACT'&&fact&&<div className="review-copy">
+       <p><b>English</b><br/>{fact.en||'No English text provided.'}</p>
+       <p><b>Filipino</b><br/>{fact.fil||'No Filipino translation provided.'}</p>
+       <p className="review-meta">{fact.subject}{fact.key?` · ${fact.key}`:''}</p>
+       <p><b>Source:</b> {fact.sourceTitle||'No source title'} {fact.sourceUrl&&<a href={fact.sourceUrl} target="_blank" rel="noopener noreferrer">Open source ↗</a>}</p>
+       <p className="review-meta">{sourceVerified?'Source verified by an independent reviewer.':'Source not yet verified. A reviewer other than the author must verify it before approval.'}</p>
+      </div>}
+      {item.type==='QUESTION'&&<QuestionReview questionId={item.id} linkedFact={fact}/>}
+      {item.status==='IN_REVIEW'&&allowed('REVIEWER')&&<div className="review-actions">
+       {item.type==='FACT'&&<button disabled={busy||sourceVerified||!fact?.sourceUrl} onClick={()=>{
+        void run(async()=>{const result=await adminRequestVerify(item.id);if(result.sourceVerified)setVerifiedSources(value=>({...value,[item.id]:true}));return result;},'Source verification recorded');
+       }}>{sourceVerified?'Source verified':'Verify source'}</button>}
+       <button disabled={busy} onClick={()=>{
+        if(item.type==='FACT'&&!sourceVerified){const text='Verify the source first. A reviewer other than the author must record that check.';setError(text);setToast({kind:'error',text});return;}
+        void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'approve'),'Independent review approved');
+       }}>Approve</button>
+       <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'reject'),'Returned to draft')}>Reject</button>
+      </div>}
+      {item.status==='APPROVED'&&allowed('CONTENT_ADMIN')&&<div className="review-actions"><button disabled={busy} className="admin-primary" onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish'),'Published to learners')}>Publish</button></div>}
+     </article>;
+    })}{!queue.length&&<p>No items are awaiting editorial action.</p>}</div>
+     {!!queue.length&&<div className="wizard-footer"><span>{queue[reviewIndex]?.type==='FACT'?'Review the fact and source before deciding.':'Review the question, linked fact, and answer choices before deciding.'}</span>
+      <div className="wizard-controls"><button disabled={reviewIndex===0} onClick={()=>setReviewIndex(index=>Math.max(0,index-1))}>← Previous</button><button disabled={reviewIndex>=queue.length-1} onClick={()=>setReviewIndex(index=>Math.min(queue.length-1,index+1))}>Next →</button></div>
+     </div>}</>}</section>}
+   {view==='access'&&roles.includes('SUPER_ADMIN')&&<>
+    <section className="admin-panel"><h2>Grant or revoke a platform role</h2>
+     <p>Only active accounts can receive a role. Changes are recorded in the platform audit log.</p>
+     <form className="role-form" onSubmit={event=>{event.preventDefault();
+      if(roleAction==='REVOKE'&&!window.confirm(`Revoke ${roleName} from ${roleAccountId}?`))return;
+      void run(async()=>{
+       const result=await adminApi.changeRole({accountId:roleAccountId.trim(),role:roleName,action:roleAction,reason:roleReason.trim()});
+       setManagedAccounts(await adminApi.roleAccounts());setRoleReason('');
+       return result.changed?`${roleName} ${roleAction==='GRANT'?'granted':'revoked'}.`:`${roleAccountId} already has no change for ${roleName}.`;
+      },'Role assignment updated.');
+     }}>
+      <label>Find account by email<input type="search" value={accountSearch} placeholder="Search verified Google email" onChange={event=>setAccountSearch(event.target.value)}/></label>
+      <label>Account<select required value={roleAccountId} onChange={event=>setRoleAccountId(event.target.value)}>
+       <option value="">Select an account</option>{managedAccounts.filter(account=>account.email&&account.email.toLowerCase().includes(accountSearch.trim().toLowerCase())).map(account=><option key={account.accountId} value={account.accountId}>{account.email} · {account.roles.length?account.roles.join(', '):'Learner'}</option>)}
+      </select></label>
+      <label>Role<select value={roleName} onChange={event=>setRoleName(event.target.value as ManagedRole)}>
+       {(['REVIEWER','EDITOR','CONTENT_ADMIN','SUPPORT','SUPER_ADMIN'] as ManagedRole[]).map(role=><option key={role}>{role}</option>)}
+      </select></label>
+      <label>Action<select value={roleAction} onChange={event=>setRoleAction(event.target.value as 'GRANT'|'REVOKE')}>
+       <option value="GRANT">Grant</option><option value="REVOKE">Revoke</option>
+      </select></label>
+      <label>Reason<input required maxLength={500} value={roleReason} placeholder="Why is this role changing?" onChange={event=>setRoleReason(event.target.value)}/></label>
+      <button className="admin-primary" disabled={busy} type="submit">{roleAction==='GRANT'?'Grant role':'Revoke role'}</button>
+     </form>
+    </section>
+    <section className="admin-panel"><div className="panel-head"><h2>Accounts</h2><button disabled={busy} onClick={()=>void adminApi.roleAccounts().then(setManagedAccounts).catch(e=>setError(e instanceof Error?e.message:'Could not load accounts'))}>Refresh</button></div>
+     <p>Choose accounts by their verified Google email. Accounts without a verified email must sign in again with Google. Showing the 100 most recently created accounts.</p>
+     <div className="admin-scroll"><table><thead><tr><th>Email</th><th>Status</th><th>Created</th><th>Roles</th><th>Action</th></tr></thead><tbody>
+      {managedAccounts.map(account=><tr key={account.accountId}><td>{account.email||<span className="muted">Email unavailable — sign in again</span>}</td><td>{account.status}</td>
+       <td>{new Date(account.createdAt).toLocaleString()}</td><td>{account.roles.length?account.roles.join(' · '):'Learner'}</td>
+       <td><button disabled={!account.email} onClick={()=>{setRoleAccountId(account.accountId);setAccountSearch(account.email||'');}}>Select</button></td></tr>)}
+     </tbody></table>{!managedAccounts.length&&<p>No accounts found.</p>}</div>
+    </section>
+   </>}
   </main>
   {showFact&&<div className="admin-modal-bg" role="presentation"><form className="admin-modal" onSubmit={e=>{e.preventDefault();void run(async()=>{
     if(editingFact)await adminApi.updateFact(editingFact,factForm);else await adminApi.createFact(factForm);
@@ -200,6 +307,50 @@ export default function AdminApp(){
      <button type="button" disabled={quizForm.options.length<=2||quizForm.options.at(-1)?.correct} onClick={()=>setQuizForm(p=>({...p,options:p.options.slice(0,-1)}))}>Remove last</button></div>
     </div><div className="admin-modal-actions"><button type="button" onClick={()=>setShowQuiz(false)}>Cancel</button>
      <button className="admin-primary" disabled={busy} type="submit">Save question</button></div></form></div>}
+  {showSeedCatalog&&<div className="admin-modal-bg" role="presentation"><section className="admin-modal seed-modal" role="dialog" aria-modal="true" aria-labelledby="seed-title">
+   <div className="panel-head"><div><h2 id="seed-title">Choose starter content</h2><p>Select facts and their linked quiz questions to add as drafts.</p></div>
+    <button type="button" onClick={()=>setShowSeedCatalog(false)}>✕</button></div>
+   {loadingSeedCatalog?<p>Loading catalog…</p>:<>
+    <div className="seed-catalog-list">{seedCatalog.map(item=><label className="seed-catalog-card" key={item.id}>
+     <input type="checkbox" checked={selectedSeedIds.includes(item.id)} onChange={event=>setSelectedSeedIds(ids=>event.target.checked?[...ids,item.id]:ids.filter(id=>id!==item.id))}/>
+     <span><b>{item.emoji} {item.title}</b><small>{item.subject} · Grade {item.grade}</small>
+      <span className="seed-preview"><b>Fact (EN)</b>{item.factEn}<b>Fact (Filipino)</b>{item.factFil}
+       <b>Quiz</b>{item.quizEn}<span>{item.quizFil}</span></span><small>Source: {item.sourceTitle}</small>
+     </span>
+    </label>)}</div>
+    {!seedCatalog.length&&<p>No starter content is available.</p>}
+   </>}
+   <div className="admin-modal-actions"><button type="button" onClick={()=>setShowSeedCatalog(false)}>Cancel</button>
+    <button className="admin-primary" disabled={busy||loadingSeedCatalog||!selectedSeedIds.length} onClick={()=>void run(async()=>{
+     const result=await adminApi.seedContent(selectedSeedIds);setShowSeedCatalog(false);
+     return `Seeded ${result.factsCreated} facts and ${result.quizzesCreated} quiz drafts${result.skipped?`; skipped ${result.skipped} items already linked to a quiz`:''}.`;
+    },'Selected starter content added as drafts.')}>Seed selected ({selectedSeedIds.length})</button></div>
+  </section></div>}
  </div>;
 }
 function Status({value}:{value:string}){return <span className={'admin-status status-'+value.toLowerCase()}>{value.replace('_',' ')}</span>;}
+
+function QuestionReview({questionId,linkedFact}:{questionId:number;linkedFact:Fact|undefined}){
+ const [detail,setDetail]=useState<Record<string,unknown>|null>(null);
+ const [error,setError]=useState('');
+ useEffect(()=>{let live=true;adminApi.question(questionId).then(value=>{if(live)setDetail(value);})
+  .catch(e=>{if(live)setError(e instanceof Error?e.message:'Could not load quiz details');});
+  return()=>{live=false;};},[questionId]);
+ if(error)return <p role="alert" className="admin-error">{error}</p>;
+ if(!detail)return <p className="review-meta">Loading quiz details…</p>;
+ const translations=Array.isArray(detail.translations)?detail.translations as {locale:string;prompt:string;explanation:string}[]:[];
+ const options=Array.isArray(detail.options)?detail.options as {en:string;fil:string;correct:boolean}[]:[];
+ const english=translations.find(value=>value.locale==='en');
+ const filipino=translations.find(value=>value.locale==='fil');
+ return <div className="review-copy">
+  <p><b>Question (English)</b><br/>{english?.prompt||'No English question provided.'}</p>
+  <p><b>Tanong (Filipino)</b><br/>{filipino?.prompt||'Walang salin sa Filipino.'}</p>
+  {linkedFact&&<div className="review-linked-fact"><b>Linked fact</b><p>{linkedFact.en}</p><p>{linkedFact.fil}</p></div>}
+  <div className="review-options"><b>Answer choices</b>{options.map((option,index)=><div key={index}>
+   <span>{index+1}. {option.en} / {option.fil}</span>{option.correct&&<strong>Correct answer</strong>}
+  </div>)}</div>
+  {(english?.explanation||filipino?.explanation)&&<div className="review-explanation"><b>Explanation</b>
+   {english?.explanation&&<p>{english.explanation}</p>}{filipino?.explanation&&<p>{filipino.explanation}</p>}
+  </div>}
+ </div>;
+}

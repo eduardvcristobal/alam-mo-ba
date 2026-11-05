@@ -26,6 +26,7 @@ content_id,content_token=account("CONTENT_ADMIN")
 editor_id,editor_token=account("EDITOR")
 support_id,support_token=account("SUPPORT")
 learner_id,learner_token=account()
+psql(f"INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at,verified_email) VALUES ('{learner_id}','GOOGLE','ci-subject-{learner_id}',NOW(),'ci-reviewer@example.test')")
 code,_=call("/admin/curriculum/subjects")
 assert code==401,code
 code,subjects=call("/admin/curriculum/subjects",token=support_token)
@@ -41,7 +42,7 @@ code,topics=call("/admin/curriculum/topics?subject=Science&grade=7",token=suppor
 assert code==200 and any(x["id"]==tid for x in topics),(code,topics)
 
 fact={"key":"ci-curriculum-"+uuid.uuid4().hex[:9],"subject":"Science","emoji":"🔬",
- "en":"CI science fact","fil":"CI kaalaman sa agham","explore":True,"grades":[7],
+ "en":"CI science fact","fil":"CI kaalaman sa agham","student":True,"grade":7,"explore":True,
  "sourceTitle":"CI source","sourceUrl":"https://example.org/ci-curriculum"}
 code,created=call("/admin/facts","POST",editor_token,fact)
 assert code==200,(code,created)
@@ -53,6 +54,21 @@ assert psql(f"SELECT topic_id FROM content_fact WHERE id={fid}",True)==str(tid)
 code,accounts=call("/admin/learners",token=support_token)
 assert code==200 and any(x["id"]==learner_id for x in accounts),(code,accounts)
 assert "email" not in str(accounts).lower() and "provider_subject" not in str(accounts).lower()
+code,_=call("/admin/roles/change","POST",support_token,
+ {"accountId":learner_id,"role":"REVIEWER","action":"GRANT","reason":"CI role authorization check"})
+assert code==403,code
+code,grant=call("/admin/roles/change","POST",super_token,
+ {"accountId":learner_id,"role":"REVIEWER","action":"GRANT","reason":"CI role grant"})
+assert code==200 and grant["changed"],(code,grant)
+code,role_accounts=call("/admin/roles/accounts",token=super_token)
+assert code==200 and any(x["accountId"]==learner_id and x["email"]=="ci-reviewer@example.test" and "REVIEWER" in x["roles"] for x in role_accounts),(code,role_accounts)
+code,_=call("/admin/roles/change","POST",super_token,
+ {"accountId":super_id,"role":"SUPER_ADMIN","action":"REVOKE","reason":"CI self protection"})
+assert code==409,code
+code,revoked=call("/admin/roles/change","POST",super_token,
+ {"accountId":learner_id,"role":"REVIEWER","action":"REVOKE","reason":"CI role revoke"})
+assert code==200 and revoked["changed"],(code,revoked)
+assert "GRANT_PLATFORM_ROLE" in psql("SELECT action FROM platform_operator_audit WHERE target_id='"+learner_id+"' ORDER BY id DESC LIMIT 2",True)
 code,_=call(f"/admin/learners/{learner_id}/status","PUT",editor_token,
  {"status":"DISABLED","reason":"Synthetic CI suspension"})
 assert code==403,code

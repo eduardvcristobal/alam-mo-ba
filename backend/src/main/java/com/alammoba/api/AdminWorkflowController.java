@@ -80,7 +80,8 @@ public class AdminWorkflowController {
         if(!current.status().equals(from))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Expected "+from+" but found "+current.status());
         if(action.equals("approve") && (actor.equals(current.author()) || current.author()==null))
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Authors cannot approve their own work");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Authors cannot approve their own work. A different account with the REVIEWER or SUPER_ADMIN role must approve it.");
         if(action.equals("publish") && (current.reviewer()==null || current.reviewer().equals(current.author())))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,"An independent review is required");
         if(action.equals("approve"))verifyDraft(type,id);
@@ -103,11 +104,16 @@ public class AdminWorkflowController {
     }
     private void verifyDraft(String type,long id) {
         if(type.equals("fact")) {
-            if(!exists("SELECT 1 FROM content_fact_translation WHERE fact_id=? AND locale='en' AND length(trim(body))>0",id)||
-               !exists("SELECT 1 FROM content_fact_translation WHERE fact_id=? AND locale='fil' AND length(trim(body))>0",id)||
-               !exists("SELECT 1 FROM content_fact_audience WHERE fact_id=?",id)||
-               !exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0 AND checked_at IS NOT NULL",id))
-                throw AdminContentController.bad("Bilingual facts require an independently checked HTTPS source");
+            if(!exists("SELECT 1 FROM content_fact_translation WHERE fact_id=? AND locale='en' AND length(trim(body))>0",id))
+                throw AdminContentController.bad("Fact is missing its English text");
+            if(!exists("SELECT 1 FROM content_fact_translation WHERE fact_id=? AND locale='fil' AND length(trim(body))>0",id))
+                throw AdminContentController.bad("Fact is missing its Filipino translation");
+            if(!exists("SELECT 1 FROM content_fact_audience WHERE fact_id=?",id))
+                throw AdminContentController.bad("Fact must be assigned to at least one audience");
+            if(!exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0",id))
+                throw AdminContentController.bad("Fact needs a titled HTTPS source");
+            if(!exists("SELECT 1 FROM content_source WHERE fact_id=? AND source_url LIKE 'https://%' AND length(trim(source_title))>0 AND checked_at IS NOT NULL",id))
+                throw AdminContentController.bad("Source has not been independently checked. Click Verify source and complete the confirmation first.");
         } else {
             if(!exists("SELECT 1 FROM quiz_question_translation WHERE question_id=? AND locale='en'",id)||
                !exists("SELECT 1 FROM quiz_question_translation WHERE question_id=? AND locale='fil'",id)||

@@ -52,7 +52,8 @@ public class AdminContentController {
                 (SELECT s.source_title FROM content_source s WHERE s.fact_id=f.id ORDER BY s.id LIMIT 1) source_title,
                 EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='STUDENT') has_student,
                 (SELECT MIN(a.grade_level) FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='STUDENT') grade,
-                EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='EXPLORE') has_explore
+                EXISTS(SELECT 1 FROM content_fact_audience a WHERE a.fact_id=f.id AND a.audience='EXPLORE') has_explore,
+                EXISTS(SELECT 1 FROM content_source s WHERE s.fact_id=f.id AND s.source_url LIKE 'https://%' AND length(trim(s.source_title))>0 AND s.checked_at IS NOT NULL) source_verified
             FROM content_fact f
             LEFT JOIN content_fact_translation en ON en.fact_id=f.id AND en.locale='en'
             LEFT JOIN content_fact_translation fil ON fil.fact_id=f.id AND fil.locale='fil'
@@ -64,7 +65,7 @@ public class AdminContentController {
                 out.put("status",rs.getString(5));out.put("en",rs.getString(6));
                 out.put("fil",rs.getString(7));out.put("sourceUrl",rs.getString(8));out.put("sourceTitle",rs.getString(9));
                 out.put("student",rs.getBoolean(10));out.put("grade",rs.getObject(11));
-                out.put("explore",rs.getBoolean(12));
+                out.put("explore",rs.getBoolean(12));out.put("sourceVerified",rs.getBoolean(13));
                 return out;
             },limit,offset));
     }
@@ -73,6 +74,7 @@ public class AdminContentController {
     public ResponseEntity<Map<String,Object>> create(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
                                                       @RequestBody FactDraft input){
         UUID actor=access.require(bearer,"EDITOR","CONTENT_ADMIN");
+        PlatformSettingsController.requireSubmissionsEnabled(jdbc);
         validate(input);
         Long id=jdbc.queryForObject("""
             INSERT INTO content_fact(canonical_key,subject_code,emoji,status,created_by)

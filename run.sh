@@ -5,6 +5,14 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_PORT="${BACKEND_PORT:-8080}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+FRONTEND_HOST="${FRONTEND_HOST:-127.0.0.1}"
+if [[ -n "${FRONTEND_MODE:-}" ]]; then
+  FRONTEND_MODE="$FRONTEND_MODE"
+elif [[ -f "$ROOT_DIR/frontend/.env.admin" ]]; then
+  FRONTEND_MODE="admin"
+else
+  FRONTEND_MODE="development"
+fi
 BACKEND_PID=""
 FRONTEND_PID=""
 
@@ -82,10 +90,11 @@ echo "Starting backend at http://localhost:$BACKEND_PORT"
 ) &
 BACKEND_PID=$!
 
-echo "Starting frontend at http://localhost:$FRONTEND_PORT"
+echo "Starting frontend at http://$FRONTEND_HOST:$FRONTEND_PORT"
+echo "Using frontend mode: $FRONTEND_MODE"
 (
   cd "$ROOT_DIR/frontend"
-  npm run dev -- --port "$FRONTEND_PORT"
+  npm run dev -- --mode "$FRONTEND_MODE" --host "$FRONTEND_HOST" --port "$FRONTEND_PORT"
 ) &
 FRONTEND_PID=$!
 

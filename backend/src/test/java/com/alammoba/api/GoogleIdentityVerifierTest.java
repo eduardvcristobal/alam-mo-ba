@@ -16,6 +16,7 @@ class GoogleIdentityVerifierTest {
             .claim("iss","https://accounts.google.com")
             .claim("aud",List.of(audience))
             .claim("sub","google-subject-123")
+            .claim("email","Admin@Example.org")
             .claim("nonce",nonce)
             .claim("email_verified",verified)
             .issuedAt(now.minusSeconds(5))
@@ -25,6 +26,12 @@ class GoogleIdentityVerifierTest {
     @Test void acceptsMatchingClaimsAfterSignatureVerification() {
         assertThat(GoogleIdentityVerifier.validateClaims(claims("configured-client","server-nonce",true),
             "configured-client","server-nonce")).isEqualTo("google-subject-123");
+    }
+    @Test void returnsNormalizedVerifiedEmailForBootstrapMatching() {
+        var identity=GoogleIdentityVerifier.validateIdentityClaims(
+            claims("configured-client","server-nonce",true),"configured-client","server-nonce");
+        assertThat(identity.subject()).isEqualTo("google-subject-123");
+        assertThat(identity.email()).isEqualTo("admin@example.org");
     }
     @Test void rejectsWrongAudienceNonceAndUnverifiedEmail() {
         assertThatThrownBy(()->GoogleIdentityVerifier.validateClaims(

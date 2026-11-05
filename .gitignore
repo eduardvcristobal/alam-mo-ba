@@ -1,4 +1,5 @@
 .env
+/frontend/.env.admin
 *.log
 .DS_Store
 node_modules/
