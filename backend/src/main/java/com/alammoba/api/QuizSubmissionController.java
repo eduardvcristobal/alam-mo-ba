@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,9 +22,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/quiz")
 public class QuizSubmissionController {
     private final JdbcTemplate jdbc;
+    private final AccountIdentityController identity;
 
-    public QuizSubmissionController(JdbcTemplate jdbc) {
+    public QuizSubmissionController(JdbcTemplate jdbc, AccountIdentityController identity) {
         this.jdbc = jdbc;
+        this.identity = identity;
     }
 
     public record Answer(long questionId, long optionId) {}
@@ -47,8 +50,10 @@ public class QuizSubmissionController {
     }
 
     @PostMapping("/submit")
-    public Result submit(@RequestBody Submission submission) {
+    public Result submit(@RequestBody Submission submission,
+            @org.springframework.web.bind.annotation.RequestHeader(value=org.springframework.http.HttpHeaders.AUTHORIZATION,required=false) String authorization) {
         validate(submission);
+        UUID account = authorization == null || authorization.isBlank() ? null : identity.accountFromHeader(authorization);
         String audience = submission.mode().equals("student") ? "STUDENT" : "EXPLORE";
         List<AnswerResult> answers = new java.util.ArrayList<>();
         for (Answer answer : submission.answers()) {
@@ -83,6 +88,15 @@ public class QuizSubmissionController {
             jdbc.query("SELECT locale,explanation FROM quiz_question_translation WHERE question_id=?",
                 (org.springframework.jdbc.core.RowCallbackHandler) rs -> { explanations.put(rs.getString(1), rs.getString(2)); }, answer.questionId());
             answers.add(new AnswerResult(answer.questionId(), correctness.get(0), correctId, explanations));
+            // Authenticated learners earn at most one point for a published question per day.
+            // The unique key prevents repeated submissions from farming points.
+            if (account != null && correctness.get(0)) {
+                jdbc.update("""
+                    INSERT INTO learning_leaderboard_correct_answer(account_id,question_id,activity_date)
+                    VALUES (?, ?, CURRENT_DATE)
+                    ON CONFLICT (account_id,question_id,activity_date) DO NOTHING
+                    """, account, answer.questionId());
+            }
         }
         int score = (int) answers.stream().filter(AnswerResult::correct).count();
         return new Result(score, answers.size(), answers);
