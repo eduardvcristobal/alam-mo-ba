@@ -2,6 +2,7 @@ import {useCallback,useEffect,useState} from 'react';
 import {adminApi,adminRequest} from './adminApi';
 import AdminLogin from './AdminLogin';
 import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
+import {accountSession,logoutAccount} from '../lib/accountSync';
 import './admin.css';
 
 type View='dashboard'|'facts'|'questions'|'review';
@@ -32,6 +33,7 @@ export default function AdminApp(){
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true);
+ const [signingOut,setSigningOut]=useState(false);
  const roles=me?.roles||[];
  const allowed=(...r:string[])=>roles.includes('SUPER_ADMIN')||r.some(role=>roles.includes(role as typeof roles[number]));
  const refresh=useCallback(async()=>{
@@ -54,6 +56,14 @@ export default function AdminApp(){
   try{await task();await refresh();setMessage(success);}
   catch(e){setError(e instanceof Error?e.message:'Request failed');}
   finally{setBusy(false);}
+ };
+ const signOut=async()=>{
+  if(signingOut)return;
+  setSigningOut(true);setError('');setMessage('');
+  const token=accountSession.get()?.token||'';
+  try{if(token)await logoutAccount(token);else accountSession.clear();}
+  catch{accountSession.clear();setError('Signed out on this device, but the server could not confirm session revocation.');}
+  finally{setMe(null);setStats(null);setFacts([]);setQuestions([]);setQueue([]);setSigningOut(false);}
  };
  const editFact=(f:Fact)=>{
   setEditingFact(f.id);setFactForm({key:f.key,subject:f.subject,emoji:f.emoji||'💡',
@@ -87,7 +97,8 @@ export default function AdminApp(){
      onClick={()=>{setView(tab.id);setError('');setMessage('');}}>
      <span className="nav-symbol">{tab.icon}</span><span>{tab.title}</span></button>)}</nav>
    <div className="admin-side-foot"><span className="online-dot"/>Authenticated Admin
-    <small>{roles.join(' · ')}</small><a href="/">← Learner application</a></div>
+    <small>{roles.join(' · ')}</small><button className="admin-signout" disabled={signingOut} onClick={()=>void signOut()}>{signingOut?'Signing out…':'Sign out'}</button>
+    <a href="/">← Learner application</a></div>
   </aside>
   <main className="admin-main">
    <header className="admin-top">

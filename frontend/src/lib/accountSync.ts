@@ -72,6 +72,9 @@ export async function syncAccountProgress(token:string,local:GuestProgress,maxRe
  throw new AccountConflictError();
 }
 export async function logoutAccount(token:string):Promise<void>{
- await fetch(api+'/account/logout',{method:'POST',headers:{Authorization:'Bearer '+token},cache:'no-store'});
- accountSession.clear();
+ try{
+  await fetch(api+'/account/logout',{method:'POST',headers:{Authorization:'Bearer '+token},cache:'no-store'});
+ }finally{
+  accountSession.clear();
+ }
 }

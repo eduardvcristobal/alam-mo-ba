@@ -68,7 +68,7 @@ public class AdminLoginController {
         if(accounts.isEmpty()) {
             if(!isBootstrapEmail(bootstrapEmail,identity.email()))
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,"No provisioned admin account");
-            actor=createBootstrapAccount(identity);
+            actor=seedSuperAdminAccount(identity);
         } else {
             if(accounts.size()!=1 || !"ACTIVE".equals(accounts.get(0).getValue()))
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,"No active admin account");
@@ -95,7 +95,8 @@ public class AdminLoginController {
         return configured!=null&&!configured.isBlank()&&verified!=null&&
             configured.trim().equalsIgnoreCase(verified.trim());
     }
-    private UUID createBootstrapAccount(GoogleIdentityVerifier.VerifiedIdentity identity) {
+    /** Seeds the first platform administrator only after the configured verified Google identity signs in. */
+    private UUID seedSuperAdminAccount(GoogleIdentityVerifier.VerifiedIdentity identity) {
         UUID account=UUID.randomUUID();
         jdbc.update("INSERT INTO learning_account(id) VALUES (?)",account);
         jdbc.update("""
