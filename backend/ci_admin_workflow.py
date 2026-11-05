@@ -33,7 +33,7 @@ code,summary=call("/admin/dashboard",token=support)
 assert code==200 and "facts" in summary,(code,summary)
 fact={"key":"ci-admin-fact-"+uuid.uuid4().hex[:8],"subject":"Science","emoji":"🔬",
       "en":"CI verified educational fact","fil":"CI beripikadong kaalaman",
-      "explore":True,"grades":[7],"sourceTitle":"CI synthetic source","sourceUrl":"https://example.org/ci-source"}
+      "student":True,"grade":7,"explore":True,"sourceTitle":"CI synthetic source","sourceUrl":"https://example.org/ci-source"}
 code,_=call("/admin/facts","POST",support,fact)
 assert code==403,code
 code,result=call("/admin/facts","POST",editor,fact)
