@@ -41,7 +41,7 @@ code,topics=call("/admin/curriculum/topics?subject=Science&grade=7",token=suppor
 assert code==200 and any(x["id"]==tid for x in topics),(code,topics)
 
 fact={"key":"ci-curriculum-"+uuid.uuid4().hex[:9],"subject":"Science","emoji":"🔬",
- "en":"CI science fact","fil":"CI kaalaman sa agham","explore":True,"grades":[7],
+ "en":"CI science fact","fil":"CI kaalaman sa agham","student":True,"grade":7,"explore":True,
  "sourceTitle":"CI source","sourceUrl":"https://example.org/ci-curriculum"}
 code,created=call("/admin/facts","POST",editor_token,fact)
 assert code==200,(code,created)
