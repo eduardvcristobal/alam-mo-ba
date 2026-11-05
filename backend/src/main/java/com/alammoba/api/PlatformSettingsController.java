@@ -66,5 +66,10 @@ public class PlatformSettingsController {
         Boolean value=db.queryForObject("SELECT setting_value FROM platform_setting WHERE setting_key=?",Boolean.class,key);
         return Boolean.TRUE.equals(value);
     }
+    static void requireSubmissionsEnabled(JdbcTemplate db){
+        if(!enabled(db,"content_submissions_enabled"))
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,"New content submissions are paused");
+    }
     private static <T> ResponseEntity<T> response(T value){return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(value);}
 }
