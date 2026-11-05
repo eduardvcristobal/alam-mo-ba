@@ -12,6 +12,7 @@ body:has(.admin-shell),body:has(.admin-gate){background:#f4f7fc;color:var(--admi
 .admin-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px}.admin-panel{background:#fff;border:1px solid var(--admin-border);box-shadow:0 4px 18px rgba(30,53,108,.035);border-radius:17px;padding:20px;margin-bottom:18px}
 .metric{display:flex;flex-direction:column;gap:8px;margin:0 0 20px}.metric-icon{background:#e9efff;color:#214abb;border-radius:12px;font-size:20px;width:40px;height:40px;display:grid;place-items:center}.metric small{color:#687a9f;font-weight:600}.metric strong{font-size:30px;color:#16295d}
 .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:17px}.panel-head h2{font-size:19px;margin:0;color:#162e70}.panel-head button{font-size:13px}.admin-panel>p{color:#7180a0;font-size:14px}
+.admin-panel-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .admin-primary{background:#2148bf!important;color:white!important;border-color:#2148bf!important}
 .pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:22px}.pipeline span{background:#f0f4fc;border-radius:12px;display:flex;align-items:center;gap:8px;padding:13px 9px;font-size:12px;font-weight:650;color:#334f88}.pipeline b{background:#dce5fc;border-radius:50%;width:23px;height:23px;display:grid;place-items:center}
 .admin-line{padding:12px 0;border-top:1px solid #edf1f9;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}

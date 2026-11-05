@@ -3,6 +3,7 @@ import {adminApi,adminRequest} from './adminApi';
 import AdminLogin from './AdminLogin';
 import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
 import {accountSession,logoutAccount} from '../lib/accountSync';
+import {seedStarterContent} from './adminSeed';
 import './admin.css';
 
 type View='dashboard'|'facts'|'questions'|'review';
@@ -53,7 +54,7 @@ export default function AdminApp(){
  const run=async(task:()=>Promise<unknown>,success:string)=>{
   if(busy)return;
   setBusy(true);setError('');setMessage('');
-  try{await task();await refresh();setMessage(success);}
+  try{const result=await task();await refresh();setMessage(typeof result==='string'?result:success);}
   catch(e){setError(e instanceof Error?e.message:'Request failed');}
   finally{setBusy(false);}
  };
@@ -126,8 +127,13 @@ export default function AdminApp(){
      <button onClick={()=>setView('facts')}>View facts →</button></div>
      {facts.slice(0,5).map(f=><div key={f.id} className="admin-line"><span>{f.emoji||'💡'} {f.en||f.key}</span><Status value={f.status}/></div>)}
      {!facts.length&&<p>No facts have been authored yet.</p>}</section></>}
-   {view==='facts'&&<section className="admin-panel"><div className="panel-head"><h2>Knowledge library</h2>
-    {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingFact(null);setFactForm(emptyFact());setShowFact(true);}}>+ Add fact</button>}</div>
+   {view==='facts'&&<section className="admin-panel"><div className="panel-head"><h2>Knowledge library</h2><div className="admin-panel-actions">
+    {roles.includes('SUPER_ADMIN')&&<button disabled={busy} onClick={()=>void run(async()=>{
+     const result=await seedStarterContent();
+     return `Added ${result.factsCreated} fact drafts and ${result.quizzesCreated} quiz drafts. Existing starter entries were skipped.`;
+    },'Starter drafts are ready. Verify the sources and review them before publishing.')}>Seed starter facts + quizzes</button>}
+    {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingFact(null);setFactForm(emptyFact());setShowFact(true);}}>+ Add fact</button>}
+    </div></div>
     <div className="admin-scroll"><table><thead><tr><th>Fact</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>{facts.map(f=><tr key={f.id}><td><b>{f.emoji} {f.en||f.key}</b><small>{f.key}</small></td><td>{f.subject}</td>
       <td><Status value={f.status}/></td><td>
