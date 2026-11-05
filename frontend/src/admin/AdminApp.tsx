@@ -22,9 +22,14 @@ export default function AdminApp(){
  const [view,setView]=useState<View>('dashboard');
  const [stats,setStats]=useState<Overview|null>(null);
  const [facts,setFacts]=useState<Fact[]>([]);
+ const [selectedFactIds,setSelectedFactIds]=useState<number[]>([]);
  const [questions,setQuestions]=useState<QuestionSummary[]>([]);
+ const [selectedQuestionIds,setSelectedQuestionIds]=useState<number[]>([]);
  const [queue,setQueue]=useState<QueueEntry[]>([]);
  const [reviewIndex,setReviewIndex]=useState(0);
+ const [reviewView,setReviewView]=useState<'wizard'|'bulk-review'|'bulk-publish'>('wizard');
+ const [selectedReviewKeys,setSelectedReviewKeys]=useState<string[]>([]);
+ const [selectedPublishKeys,setSelectedPublishKeys]=useState<string[]>([]);
  const [verifiedSources,setVerifiedSources]=useState<Record<number,boolean>>({});
  const [managedAccounts,setManagedAccounts]=useState<ManagedAccount[]>([]);
  const [roleAccountId,setRoleAccountId]=useState('');
@@ -63,6 +68,10 @@ export default function AdminApp(){
    adminApi.queue().catch(()=>[] as QueueEntry[])
   ]);
   setStats(overview);setFacts(factRows);setQuestions(questionRows);setQueue(review);
+  setSelectedFactIds(selected=>selected.filter(id=>factRows.some(f=>f.id===id&&f.status==='DRAFT')));
+  setSelectedQuestionIds(selected=>selected.filter(id=>questionRows.some(q=>q.id===id&&q.status==='DRAFT')));
+  setSelectedReviewKeys(selected=>selected.filter(key=>review.some(item=>`${item.type}:${item.id}`===key&&item.status==='IN_REVIEW')));
+  setSelectedPublishKeys(selected=>selected.filter(key=>review.some(item=>`${item.type}:${item.id}`===key&&item.status==='APPROVED')));
  },[]);
  const validateSession=useCallback(async()=>{
   setLoading(true);setError('');
@@ -85,6 +94,85 @@ export default function AdminApp(){
   catch(e){const text=e instanceof Error?e.message:'Request failed';setError(text);setToast({kind:'error',text});}
   finally{setBusy(false);}
  };
+ const draftFacts=facts.filter(f=>f.status==='DRAFT');
+ const allDraftFactsSelected=draftFacts.length>0&&draftFacts.every(f=>selectedFactIds.includes(f.id));
+ const toggleFactSelection=(id:number)=>setSelectedFactIds(selected=>selected.includes(id)?selected.filter(value=>value!==id):[...selected,id]);
+ const toggleAllDraftFacts=()=>setSelectedFactIds(allDraftFactsSelected?[]:draftFacts.map(f=>f.id));
+ const submitSelectedFacts=()=>void run(async()=>{
+  let submitted=0;const failures:string[]=[];
+  for(const id of selectedFactIds){
+   try{await adminApi.transition('fact',id,'submit');submitted++;}
+   catch(e){failures.push(e instanceof Error?e.message:`Fact #${id} failed`);}
+  }
+  setSelectedFactIds([]);
+  if(failures.length){await refresh();throw new Error(`Submitted ${submitted} fact${submitted===1?'':'s'}; ${failures.length} failed. ${failures[0]}`);}
+  return `Submitted ${submitted} fact${submitted===1?'':'s'} for review.`;
+ },'Selected facts submitted for review');
+ const draftQuestions=questions.filter(q=>q.status==='DRAFT');
+ const allDraftQuestionsSelected=draftQuestions.length>0&&draftQuestions.every(q=>selectedQuestionIds.includes(q.id));
+ const toggleQuestionSelection=(id:number)=>setSelectedQuestionIds(selected=>selected.includes(id)?selected.filter(value=>value!==id):[...selected,id]);
+ const toggleAllDraftQuestions=()=>setSelectedQuestionIds(allDraftQuestionsSelected?[]:draftQuestions.map(q=>q.id));
+ const submitSelectedQuestions=()=>void run(async()=>{
+  let submitted=0;const failures:string[]=[];
+  for(const id of selectedQuestionIds){
+   try{await adminApi.transition('question',id,'submit');submitted++;}
+   catch(e){failures.push(e instanceof Error?e.message:`Question #${id} failed`);}
+  }
+  setSelectedQuestionIds([]);
+  if(failures.length){await refresh();throw new Error(`Submitted ${submitted} question${submitted===1?'':'s'}; ${failures.length} failed. ${failures[0]}`);}
+  return `Submitted ${submitted} quiz question${submitted===1?'':'s'} for review.`;
+ },'Selected quiz questions submitted for review');
+ const reviewItems=queue.filter(item=>item.status==='IN_REVIEW');
+ const selectedReviewItems=reviewItems.filter(item=>selectedReviewKeys.includes(`${item.type}:${item.id}`));
+ const allReviewItemsSelected=reviewItems.length>0&&reviewItems.every(item=>selectedReviewKeys.includes(`${item.type}:${item.id}`));
+ const sourceIsVerified=(id:number)=>Boolean(facts.find(f=>f.id===id)?.sourceVerified||verifiedSources[id]);
+ const selectedUnverifiedFactCount=selectedReviewItems.filter(item=>item.type==='FACT'&&!sourceIsVerified(item.id)).length;
+ const selectedFactsNeedingVerification=selectedReviewItems.filter(item=>item.type==='FACT'&&!sourceIsVerified(item.id));
+ const canApproveSelected=selectedReviewItems.length>0&&allowed('REVIEWER')&&selectedUnverifiedFactCount===0;
+ const toggleReviewItem=(item:QueueEntry)=>{
+  const key=`${item.type}:${item.id}`;
+  setSelectedReviewKeys(selected=>selected.includes(key)?selected.filter(value=>value!==key):[...selected,key]);
+ };
+ const toggleAllReviewItems=()=>setSelectedReviewKeys(allReviewItemsSelected?[]:reviewItems.map(item=>`${item.type}:${item.id}`));
+ const verifySelectedSources=()=>void run(async()=>{
+  let verified=0,alreadyVerified=0;const failures:string[]=[];
+  for(const item of selectedReviewItems.filter(value=>value.type==='FACT')){
+   const fact=facts.find(value=>value.id===item.id);
+   if(sourceIsVerified(item.id)){alreadyVerified++;continue;}
+   if(!fact?.sourceUrl){failures.push(`Fact #${item.id} has no source URL.`);continue;}
+   try{const result=await adminRequestVerify(item.id);if(result.sourceVerified){setVerifiedSources(value=>({...value,[item.id]:true}));verified++;}else failures.push(`Fact #${item.id} source verification was not recorded.`);}
+   catch(e){failures.push(`Fact #${item.id}: ${e instanceof Error?e.message:'verification failed'}`);}
+  }
+  if(failures.length){await refresh();throw new Error(`Verified ${verified} source${verified===1?'':'s'}; ${failures.length} failed. ${failures[0]}`);}
+  return `Verified ${verified} source${verified===1?'':'s'}${alreadyVerified?`; ${alreadyVerified} already verified`:''}.`;
+ },'Selected fact sources verified');
+ const approveSelectedItems=()=>void run(async()=>{
+  let approved=0;const failures:string[]=[];
+  for(const item of selectedReviewItems){
+   if(item.type==='FACT'&&!sourceIsVerified(item.id)){failures.push(`Fact #${item.id} must have its source verified first.`);continue;}
+   try{await adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'approve');approved++;}
+   catch(e){failures.push(`${item.type==='FACT'?'Fact':'Question'} #${item.id}: ${e instanceof Error?e.message:'approval failed'}`);}
+  }
+  if(failures.length){await refresh();throw new Error(`Approved ${approved} item${approved===1?'':'s'}; ${failures.length} could not be approved. ${failures[0]}`);}
+  return `Approved ${approved} item${approved===1?'':'s'} for publication.`;
+ },'Selected items approved');
+ const publishItems=queue.filter(item=>item.status==='APPROVED');
+ const selectedPublishItems=publishItems.filter(item=>selectedPublishKeys.includes(`${item.type}:${item.id}`));
+ const allPublishItemsSelected=publishItems.length>0&&publishItems.every(item=>selectedPublishKeys.includes(`${item.type}:${item.id}`));
+ const togglePublishItem=(item:QueueEntry)=>{
+  const key=`${item.type}:${item.id}`;
+  setSelectedPublishKeys(selected=>selected.includes(key)?selected.filter(value=>value!==key):[...selected,key]);
+ };
+ const toggleAllPublishItems=()=>setSelectedPublishKeys(allPublishItemsSelected?[]:publishItems.map(item=>`${item.type}:${item.id}`));
+ const publishSelectedItems=()=>void run(async()=>{
+  let published=0;const failures:string[]=[];
+  for(const item of [...selectedPublishItems].sort((a,b)=>a.type===b.type?0:a.type==='FACT'?-1:1)){
+   try{await adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish');published++;}
+   catch(e){failures.push(`${item.type==='FACT'?'Fact':'Question'} #${item.id}: ${e instanceof Error?e.message:'publication failed'}`);}
+  }
+  if(failures.length){await refresh();throw new Error(`Published ${published} item${published===1?'':'s'}; ${failures.length} could not be published. ${failures[0]}`);}
+  return `Published ${published} item${published===1?'':'s'} to learners.`;
+ },'Selected content published to learners');
  useEffect(()=>{
   if(view!=='access'||!roles.includes('SUPER_ADMIN'))return;
   adminApi.roleAccounts().then(setManagedAccounts)
@@ -178,8 +266,10 @@ export default function AdminApp(){
     }}>Seed starter facts + quizzes</button>}
     {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingFact(null);setFactForm(emptyFact());setShowFact(true);}}>+ Add fact</button>}
     </div></div>
-    <div className="admin-scroll"><table><thead><tr><th>Fact</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead>
-    <tbody>{facts.map(f=><tr key={f.id}><td><b>{f.emoji} {f.en||f.key}</b><small>{f.key}</small></td><td>{f.subject}</td>
+    {allowed('EDITOR','CONTENT_ADMIN')&&<div className="bulk-submit-bar"><label><input type="checkbox" aria-label="Select all draft facts" checked={allDraftFactsSelected} disabled={!draftFacts.length||busy} onChange={toggleAllDraftFacts}/>Select all drafts</label><span>{selectedFactIds.length} selected · {draftFacts.length} drafts ready</span><button className="admin-primary" disabled={!selectedFactIds.length||busy} onClick={submitSelectedFacts}>Submit selected ({selectedFactIds.length})</button></div>}
+    <p className="bulk-submit-hint">Only draft facts can be submitted. Facts already in review are waiting in the Review Queue.</p>
+    <div className="admin-scroll"><table><thead><tr><th>Select</th><th>Fact</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>{facts.map(f=><tr key={f.id}><td><input className="fact-select" type="checkbox" aria-label={`Select fact ${f.key}`} checked={selectedFactIds.includes(f.id)} disabled={f.status!=='DRAFT'||busy||!allowed('EDITOR','CONTENT_ADMIN')} onChange={()=>toggleFactSelection(f.id)}/></td><td><b>{f.emoji} {f.en||f.key}</b><small>{f.key}</small></td><td>{f.subject}</td>
       <td><Status value={f.status}/></td><td>
       {allowed('EDITOR','CONTENT_ADMIN')&&f.status!=='PUBLISHED'&&f.status!=='RETIRED'&&<button onClick={()=>editFact(f)}>Edit</button>}
       {allowed('EDITOR','CONTENT_ADMIN')&&f.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>adminApi.transition('fact',f.id,'submit'),'Fact sent for review')}>Submit</button>}
@@ -198,8 +288,10 @@ export default function AdminApp(){
       </td></tr>)}</tbody></table></div>{!facts.length&&<p>No content yet. Create your first bilingual fact.</p>}</section>}
    {view==='questions'&&<section className="admin-panel"><div className="panel-head"><h2>Question bank</h2>
     {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingQuestion(null);setQuizForm(emptyQuiz());setShowQuiz(true);}}>+ Add question</button>}</div>
-    <div className="admin-scroll"><table><thead><tr><th>Question</th><th>Linked fact</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-     {questions.map(q=><tr key={q.id}><td>{q.prompt}</td><td>#{q.factId}</td><td><Status value={q.status}/></td><td>
+    {allowed('EDITOR','CONTENT_ADMIN')&&<div className="bulk-submit-bar"><label><input type="checkbox" aria-label="Select all draft quiz questions" checked={allDraftQuestionsSelected} disabled={!draftQuestions.length||busy} onChange={toggleAllDraftQuestions}/>Select all drafts</label><span>{selectedQuestionIds.length} selected · {draftQuestions.length} drafts ready</span><button className="admin-primary" disabled={!selectedQuestionIds.length||busy} onClick={submitSelectedQuestions}>Submit selected ({selectedQuestionIds.length})</button></div>}
+    <p className="bulk-submit-hint">Only draft questions can be submitted. Questions already in review are waiting in the Review Queue.</p>
+    <div className="admin-scroll"><table><thead><tr><th>Select</th><th>Question</th><th>Linked fact</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+     {questions.map(q=><tr key={q.id}><td><input className="fact-select" type="checkbox" aria-label={`Select question ${q.id}`} checked={selectedQuestionIds.includes(q.id)} disabled={q.status!=='DRAFT'||busy||!allowed('EDITOR','CONTENT_ADMIN')} onChange={()=>toggleQuestionSelection(q.id)}/></td><td>{q.prompt}</td><td>#{q.factId}</td><td><Status value={q.status}/></td><td>
       {allowed('EDITOR','CONTENT_ADMIN')&&['DRAFT','IN_REVIEW','APPROVED'].includes(q.status)&&<button onClick={()=>void editQuestion(q)}>Edit</button>}
       {allowed('EDITOR','CONTENT_ADMIN')&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>void run(()=>adminApi.transition('question',q.id,'submit'),'Question submitted')}>Submit</button>}
       {allowed('EDITOR','CONTENT_ADMIN')&&q.status==='DRAFT'&&<button disabled={busy} onClick={()=>{
@@ -215,11 +307,49 @@ export default function AdminApp(){
         void run(()=>adminApi.transition('question',q.id,'republish'),'Quiz question restored and republished');
       }}>Republish</button>}
      </td></tr>)}</tbody></table></div>{!questions.length&&<p>No quiz questions created yet.</p>}</section>}
-   {view==='review'&&<section className="admin-panel review-wizard"><div className="panel-head"><div><h2>Review and publication queue</h2><span className="review-progress">{queue.length?`Item ${Math.min(reviewIndex+1,queue.length)} of ${queue.length}`:'0 items'}</span></div>
-    {queue.length>0&&<div className="wizard-controls"><button disabled={reviewIndex===0} onClick={()=>setReviewIndex(index=>Math.max(0,index-1))}>← Previous</button><button disabled={reviewIndex>=queue.length-1} onClick={()=>setReviewIndex(index=>Math.min(queue.length-1,index+1))}>Next →</button></div>}</div>
+   {view==='review'&&<section className="admin-panel review-wizard"><div className="panel-head"><div><h2>Review and publication queue</h2><span className="review-progress">{reviewView==='bulk-review'?`${reviewItems.length} items awaiting review`:reviewView==='bulk-publish'?`${publishItems.length} approved and ready to publish`:queue.length?`Item ${Math.min(reviewIndex+1,queue.length)} of ${queue.length}`:'0 items'}</span></div>
+    <div className="review-view-tools"><div className="review-view-toggle" role="group" aria-label="Review queue view"><button aria-pressed={reviewView==='wizard'} className={reviewView==='wizard'?'selected':''} onClick={()=>setReviewView('wizard')}>Wizard view</button><button aria-pressed={reviewView==='bulk-review'} className={reviewView==='bulk-review'?'selected':''} onClick={()=>setReviewView('bulk-review')}>Bulk review</button><button aria-pressed={reviewView==='bulk-publish'} className={reviewView==='bulk-publish'?'selected':''} disabled={!allowed('CONTENT_ADMIN')} onClick={()=>setReviewView('bulk-publish')}>Ready to publish ({publishItems.length})</button></div>
+    {reviewView==='wizard'&&queue.length>0&&<div className="wizard-controls"><button disabled={reviewIndex===0} onClick={()=>setReviewIndex(index=>Math.max(0,index-1))}>← Previous</button><button disabled={reviewIndex>=queue.length-1} onClick={()=>setReviewIndex(index=>Math.min(queue.length-1,index+1))}>Next →</button></div>}</div></div>
     {!allowed('REVIEWER','CONTENT_ADMIN')?<p>Review Queue requires the REVIEWER, CONTENT_ADMIN, or SUPER_ADMIN role.</p>:<>
      {allowed('CONTENT_ADMIN')&&!allowed('REVIEWER')&&<p className="review-meta">You can publish approved content here. A REVIEWER or SUPER_ADMIN must verify and approve items that are still in review.</p>}
-     <div className="review-list">{queue.slice(Math.min(reviewIndex,Math.max(0,queue.length-1)),Math.min(reviewIndex,Math.max(0,queue.length-1))+1).map(item=>{
+     {reviewView==='bulk-review'&&<>
+      <p className="review-meta">Select items to process in a batch. Verify selected fact sources first, then approve the selected facts and questions. Independent review and author checks still apply.</p>
+      <div className="review-bulk-toolbar"><label><input type="checkbox" aria-label="Select all in-review items" checked={allReviewItemsSelected} disabled={!reviewItems.length||busy} onChange={toggleAllReviewItems}/>Select all in-review</label><span>{selectedReviewItems.length} selected · {reviewItems.length} awaiting review</span>
+       {allowed('REVIEWER')&&<><button disabled={!selectedFactsNeedingVerification.length||busy} onClick={verifySelectedSources}>Verify selected fact sources ({selectedFactsNeedingVerification.length})</button><button className="admin-primary" disabled={!canApproveSelected||busy} onClick={approveSelectedItems}>Approve selected ({selectedReviewItems.length})</button></>}
+      </div>
+      {allowed('REVIEWER')&&selectedUnverifiedFactCount>0&&<p className="review-meta">Verify all selected fact sources before the approval button becomes available.</p>}
+      {!allowed('REVIEWER')&&<p className="review-meta">Only REVIEWER or SUPER_ADMIN can verify sources and approve items. CONTENT_ADMIN can publish approved items in Wizard view.</p>}
+      <div className="review-bulk-list">{reviewItems.map(item=>{
+       const linkedQuestion=item.type==='QUESTION'?questions.find(q=>q.id===item.id):undefined;
+       const fact=item.type==='FACT'?facts.find(f=>f.id===item.id):facts.find(f=>f.id===linkedQuestion?.factId);
+       const key=`${item.type}:${item.id}`;
+       return <article className="review-bulk-card" key={key}>
+        <input type="checkbox" aria-label={`Select ${item.type==='FACT'?'fact':'quiz question'} ${item.id}`} checked={selectedReviewKeys.includes(key)} disabled={busy} onChange={()=>toggleReviewItem(item)}/>
+        <div className="review-bulk-content"><div className="review-bulk-heading"><strong>{item.type==='FACT'?'Fact':'Quiz question'} · #{item.id}</strong><Status value={item.status}/></div>
+         {item.type==='FACT'&&fact&&<div className="review-copy"><p><b>English</b><br/>{fact.en||'No English text provided.'}</p><p><b>Filipino</b><br/>{fact.fil||'No Filipino translation provided.'}</p><p className="review-meta">{fact.subject}{fact.key?` · ${fact.key}`:''}</p><p><b>Source:</b> {fact.sourceTitle||'No source title'} {fact.sourceUrl&&<a href={fact.sourceUrl} target="_blank" rel="noopener noreferrer">Open source ↗</a>}</p><p className="review-meta">{sourceIsVerified(item.id)?'Source verified.':'Source not yet verified.'}</p></div>}
+         {item.type==='QUESTION'&&<QuestionReview questionId={item.id} linkedFact={fact}/>}
+        </div>
+       </article>;
+      })}{!reviewItems.length&&<p>No items are awaiting editorial review.</p>}</div>
+     </>}
+     {reviewView==='bulk-publish'&&<>
+      <p className="review-meta">Approved items appear here for CONTENT_ADMIN or SUPER_ADMIN publication. Each item is checked by the server before it becomes visible to learners.</p>
+      {allowed('CONTENT_ADMIN')&&<div className="review-bulk-toolbar"><label><input type="checkbox" aria-label="Select all approved items ready to publish" checked={allPublishItemsSelected} disabled={!publishItems.length||busy} onChange={toggleAllPublishItems}/>Select all approved</label><span>{selectedPublishItems.length} selected · {publishItems.length} approved</span><button className="admin-primary" disabled={!selectedPublishItems.length||busy} onClick={publishSelectedItems}>Publish selected ({selectedPublishItems.length})</button></div>}
+      {!allowed('CONTENT_ADMIN')&&<p className="review-meta">Publishing requires the CONTENT_ADMIN or SUPER_ADMIN role.</p>}
+      <div className="review-bulk-list">{publishItems.map(item=>{
+       const linkedQuestion=item.type==='QUESTION'?questions.find(q=>q.id===item.id):undefined;
+       const fact=item.type==='FACT'?facts.find(f=>f.id===item.id):facts.find(f=>f.id===linkedQuestion?.factId);
+       const key=`${item.type}:${item.id}`;
+       return <article className="review-bulk-card" key={key}>
+        {allowed('CONTENT_ADMIN')&&<input type="checkbox" aria-label={`Select approved ${item.type==='FACT'?'fact':'quiz question'} ${item.id}`} checked={selectedPublishKeys.includes(key)} disabled={busy} onChange={()=>togglePublishItem(item)}/>}
+        <div className="review-bulk-content"><div className="review-bulk-heading"><strong>{item.type==='FACT'?'Fact':'Quiz question'} · #{item.id}</strong><Status value={item.status}/></div>
+         {item.type==='FACT'&&fact&&<div className="review-copy"><p><b>English</b><br/>{fact.en||'No English text provided.'}</p><p><b>Filipino</b><br/>{fact.fil||'No Filipino translation provided.'}</p><p className="review-meta">{fact.subject}{fact.key?` · ${fact.key}`:''}</p></div>}
+         {item.type==='QUESTION'&&<QuestionReview questionId={item.id} linkedFact={fact}/>}
+        </div>
+       </article>;
+      })}{!publishItems.length&&<p>No approved items are waiting for publication.</p>}</div>
+     </>}
+     <div className="review-list" hidden={reviewView!=='wizard'}>{queue.slice(Math.min(reviewIndex,Math.max(0,queue.length-1)),Math.min(reviewIndex,Math.max(0,queue.length-1))+1).map(item=>{
      const fact=item.type==='FACT'?facts.find(f=>f.id===item.id):facts.find(f=>f.id===questions.find(q=>q.id===item.id)?.factId);
      const sourceVerified=Boolean(fact?.sourceVerified||verifiedSources[item.id]);
      return <article className="review-item" key={item.type+item.id}>
@@ -246,7 +376,7 @@ export default function AdminApp(){
       {item.status==='APPROVED'&&allowed('CONTENT_ADMIN')&&<div className="review-actions"><button disabled={busy} className="admin-primary" onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish'),'Published to learners')}>Publish</button></div>}
      </article>;
     })}{!queue.length&&<p>No items are awaiting editorial action.</p>}</div>
-     {!!queue.length&&<div className="wizard-footer"><span>{queue[reviewIndex]?.type==='FACT'?'Review the fact and source before deciding.':'Review the question, linked fact, and answer choices before deciding.'}</span>
+     {!!queue.length&&reviewView==='wizard'&&<div className="wizard-footer"><span>{queue[reviewIndex]?.type==='FACT'?'Review the fact and source before deciding.':'Review the question, linked fact, and answer choices before deciding.'}</span>
       <div className="wizard-controls"><button disabled={reviewIndex===0} onClick={()=>setReviewIndex(index=>Math.max(0,index-1))}>← Previous</button><button disabled={reviewIndex>=queue.length-1} onClick={()=>setReviewIndex(index=>Math.min(queue.length-1,index+1))}>Next →</button></div>
      </div>}</>}</section>}
    {view==='access'&&roles.includes('SUPER_ADMIN')&&<>

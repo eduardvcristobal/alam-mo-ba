@@ -2,7 +2,7 @@
 export type GuestProgress={
  mode:'student'|'explore'|null;lang:'en'|'fil';grade:string;subject:string;
  count:number;saved:number[];learned:number[];streak:number;last:string;
- attempts:{score:number;total:number;date:string;mode?:'student'|'explore';questionIds?:number[];wrongIds?:number[]}[];
+ attempts:{score:number;total:number;date:string;mode?:'student'|'explore';questionIds?:number[];wrongIds?:number[];mistakes?:{questionId:number;subject?:string;prompt:Record<'en'|'fil',string>;choices:Record<'en'|'fil',string>[];selectedIndex:number;correctIndex:number;explanation:Record<'en'|'fil',string>}[]}[];
 };
 export type GuestCloudState={version:number;state:GuestProgress};
 const tokenKey='alam-mo-ba-guest-cloud-token';
@@ -76,20 +76,21 @@ function uniqueNumbers(a:number[],b:number[]):number[]{return Array.from(new Set
 export function mergeGuestProgress(local:GuestProgress,remote:Partial<GuestProgress>):GuestProgress{
  const input=Array.isArray(remote.attempts)?remote.attempts:[];
  const attempts=[...input,...local.attempts];
- const keys=new Set<string>();
- const mergedAttempts=attempts.filter(a=>{
+ const keys=new Map<string,number>();
+ const mergedAttempts:typeof attempts=[];
+ attempts.forEach(a=>{
   const key=JSON.stringify([a.date,a.mode,a.score,a.total,a.questionIds||[],a.wrongIds||[]]);
-  if(keys.has(key))return false;
-  keys.add(key);
-  return true;
- }).slice(-100);
+  const existing=keys.get(key);
+  if(existing===undefined){keys.set(key,mergedAttempts.length);mergedAttempts.push(a);return;}
+  if((a.mistakes?.length||0)>(mergedAttempts[existing].mistakes?.length||0))mergedAttempts[existing]=a;
+ });
  const remoteDate=typeof remote.last==='string'?remote.last:'';
  const newer=remoteDate>local.last;
  return {
   ...local,
   saved:uniqueNumbers(local.saved,Array.isArray(remote.saved)?remote.saved:[]),
   learned:uniqueNumbers(local.learned,Array.isArray(remote.learned)?remote.learned:[]),
-  attempts:mergedAttempts,
+  attempts:mergedAttempts.slice(-100),
   streak:newer?Math.max(0,remote.streak||0):local.streak,
   last:newer?remoteDate:local.last,
  };
