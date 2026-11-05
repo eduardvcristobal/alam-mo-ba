@@ -27,6 +27,7 @@ export default function AdminApp(){
  const [queue,setQueue]=useState<QueueEntry[]>([]);
  const [managedAccounts,setManagedAccounts]=useState<ManagedAccount[]>([]);
  const [roleAccountId,setRoleAccountId]=useState('');
+ const [accountSearch,setAccountSearch]=useState('');
  const [roleName,setRoleName]=useState<ManagedRole>('REVIEWER');
  const [roleAction,setRoleAction]=useState<'GRANT'|'REVOKE'>('GRANT');
  const [roleReason,setRoleReason]=useState('');
@@ -202,7 +203,10 @@ export default function AdminApp(){
        return result.changed?`${roleName} ${roleAction==='GRANT'?'granted':'revoked'}.`:`${roleAccountId} already has no change for ${roleName}.`;
       },'Role assignment updated.');
      }}>
-      <label>Account ID<input required value={roleAccountId} placeholder="Paste the account UUID" onChange={event=>setRoleAccountId(event.target.value)}/></label>
+      <label>Find account by email<input type="search" value={accountSearch} placeholder="Search verified Google email" onChange={event=>setAccountSearch(event.target.value)}/></label>
+      <label>Account<select required value={roleAccountId} onChange={event=>setRoleAccountId(event.target.value)}>
+       <option value="">Select an account</option>{managedAccounts.filter(account=>account.email&&account.email.toLowerCase().includes(accountSearch.trim().toLowerCase())).map(account=><option key={account.accountId} value={account.accountId}>{account.email} · {account.roles.length?account.roles.join(', '):'Learner'}</option>)}
+      </select></label>
       <label>Role<select value={roleName} onChange={event=>setRoleName(event.target.value as ManagedRole)}>
        {(['REVIEWER','EDITOR','CONTENT_ADMIN','SUPPORT','SUPER_ADMIN'] as ManagedRole[]).map(role=><option key={role}>{role}</option>)}
       </select></label>
@@ -214,11 +218,11 @@ export default function AdminApp(){
      </form>
     </section>
     <section className="admin-panel"><div className="panel-head"><h2>Accounts</h2><button disabled={busy} onClick={()=>void adminApi.roleAccounts().then(setManagedAccounts).catch(e=>setError(e instanceof Error?e.message:'Could not load accounts'))}>Refresh</button></div>
-     <p>Account IDs are pseudonymous. Select an account below, then choose a role and enter a reason above. Showing the 100 most recently created accounts.</p>
-     <div className="admin-scroll"><table><thead><tr><th>Account ID</th><th>Status</th><th>Created</th><th>Roles</th><th>Action</th></tr></thead><tbody>
-      {managedAccounts.map(account=><tr key={account.accountId}><td><code>{account.accountId}</code></td><td>{account.status}</td>
+     <p>Choose accounts by their verified Google email. Accounts without a verified email must sign in again with Google. Showing the 100 most recently created accounts.</p>
+     <div className="admin-scroll"><table><thead><tr><th>Email</th><th>Status</th><th>Created</th><th>Roles</th><th>Action</th></tr></thead><tbody>
+      {managedAccounts.map(account=><tr key={account.accountId}><td>{account.email||<span className="muted">Email unavailable — sign in again</span>}</td><td>{account.status}</td>
        <td>{new Date(account.createdAt).toLocaleString()}</td><td>{account.roles.length?account.roles.join(' · '):'Learner'}</td>
-       <td><button onClick={()=>setRoleAccountId(account.accountId)}>Select</button></td></tr>)}
+       <td><button disabled={!account.email} onClick={()=>{setRoleAccountId(account.accountId);setAccountSearch(account.email||'');}}>Select</button></td></tr>)}
      </tbody></table>{!managedAccounts.length&&<p>No accounts found.</p>}</div>
     </section>
    </>}

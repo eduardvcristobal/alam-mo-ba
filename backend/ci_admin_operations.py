@@ -26,6 +26,7 @@ content_id,content_token=account("CONTENT_ADMIN")
 editor_id,editor_token=account("EDITOR")
 support_id,support_token=account("SUPPORT")
 learner_id,learner_token=account()
+psql(f"INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at,verified_email) VALUES ('{learner_id}','GOOGLE','ci-subject-{learner_id}',NOW(),'ci-reviewer@example.test')")
 code,_=call("/admin/curriculum/subjects")
 assert code==401,code
 code,subjects=call("/admin/curriculum/subjects",token=support_token)
@@ -60,7 +61,7 @@ code,grant=call("/admin/roles/change","POST",super_token,
  {"accountId":learner_id,"role":"REVIEWER","action":"GRANT","reason":"CI role grant"})
 assert code==200 and grant["changed"],(code,grant)
 code,role_accounts=call("/admin/roles/accounts",token=super_token)
-assert code==200 and any(x["accountId"]==learner_id and "REVIEWER" in x["roles"] for x in role_accounts),(code,role_accounts)
+assert code==200 and any(x["accountId"]==learner_id and x["email"]=="ci-reviewer@example.test" and "REVIEWER" in x["roles"] for x in role_accounts),(code,role_accounts)
 code,_=call("/admin/roles/change","POST",super_token,
  {"accountId":super_id,"role":"SUPER_ADMIN","action":"REVOKE","reason":"CI self protection"})
 assert code==409,code

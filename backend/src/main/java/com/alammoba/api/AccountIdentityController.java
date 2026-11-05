@@ -60,7 +60,8 @@ public class AccountIdentityController {
         if(input==null || input.nonce()==null || !input.nonce().matches("[A-Za-z0-9_-]{43}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid login challenge");
         }
-        String subject=verifier.verifySubject(input.idToken(),input.nonce());
+        var googleIdentity=verifier.verifyIdentity(input.idToken(),input.nonce());
+        String subject=googleIdentity.subject();
         int consumed=jdbc.update("""
             UPDATE learning_login_challenge SET consumed_at=NOW()
             WHERE nonce_sha256=? AND expires_at>NOW() AND consumed_at IS NULL
@@ -76,12 +77,16 @@ public class AccountIdentityController {
             accountId=UUID.randomUUID();
             jdbc.update("INSERT INTO learning_account(id) VALUES (?)",accountId);
             jdbc.update("""
-                INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at)
-                VALUES (?,'GOOGLE',?,NOW())
-                """,accountId,subject);
+                INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at,verified_email)
+                VALUES (?,'GOOGLE',?,NOW(),?)
+                """,accountId,subject,googleIdentity.email());
             jdbc.update("INSERT INTO learning_account_progress(account_id) VALUES (?)",accountId);
         } else {
             accountId=accounts.get(0);
+            jdbc.update("""
+                UPDATE learning_account_identity SET verified_email=?,verified_at=NOW()
+                WHERE provider='GOOGLE' AND provider_subject=?
+                """,googleIdentity.email(),subject);
         }
         Integer active=jdbc.queryForObject(
             "SELECT count(*) FROM learning_account WHERE id=? AND status='ACTIVE'",Integer.class,accountId);

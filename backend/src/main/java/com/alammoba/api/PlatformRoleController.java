@@ -23,7 +23,7 @@ public class PlatformRoleController {
     private final PlatformAdminGuard guard;
     public PlatformRoleController(JdbcTemplate db,PlatformAdminGuard guard){this.db=db;this.guard=guard;}
 
-    public record AccountRoles(UUID accountId,String status,Instant createdAt,List<String> roles){}
+    public record AccountRoles(UUID accountId,String email,String status,Instant createdAt,List<String> roles){}
     public record RoleChange(UUID accountId,String role,String action,String reason){}
 
     @GetMapping("/accounts")
@@ -33,11 +33,15 @@ public class PlatformRoleController {
         requireSuperAdmin(auth);
         PlatformAdminContentController.checkPaging(offset,limit);
         List<AccountRoles> rows=db.query("""
-            SELECT id,status,created_at FROM learning_account
-            WHERE status<>'DELETED' ORDER BY created_at DESC,id LIMIT ? OFFSET ?
+            SELECT a.id,(
+                SELECT i.verified_email FROM learning_account_identity i
+                WHERE i.account_id=a.id AND i.provider='GOOGLE'
+                ORDER BY i.verified_at DESC,i.id DESC LIMIT 1
+            ) email,a.status,a.created_at FROM learning_account a
+            WHERE a.status<>'DELETED' ORDER BY a.created_at DESC,a.id LIMIT ? OFFSET ?
             """,(rs,n)->new AccountRoles(rs.getObject(1,UUID.class),rs.getString(2),
-                rs.getTimestamp(3).toInstant(),List.of()),limit,offset);
-        List<AccountRoles> result=rows.stream().map(account->new AccountRoles(account.accountId(),
+                rs.getString(3),rs.getTimestamp(4).toInstant(),List.of()),limit,offset);
+        List<AccountRoles> result=rows.stream().map(account->new AccountRoles(account.accountId(),account.email(),
             account.status(),account.createdAt(),db.query(
                 "SELECT role FROM platform_admin_role WHERE account_id=? ORDER BY role",
                 (rs,n)->rs.getString(1),account.accountId()))).toList();

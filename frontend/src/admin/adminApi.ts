@@ -11,7 +11,7 @@ export type QuizOption={en:string;fil:string;correct:boolean};
 export type QuestionDraft={factId:number;en:string;fil:string;explanationEn:string;explanationFil:string;options:QuizOption[]};
 export type QuestionSummary={id:number;factId:number;status:FactStatus;prompt:string};
 export type QueueEntry={type:'FACT'|'QUESTION';id:number;status:FactStatus};
-export type ManagedAccount={accountId:string;status:'ACTIVE'|'DISABLED';createdAt:string;roles:Role[]};
+export type ManagedAccount={accountId:string;email:string|null;status:'ACTIVE'|'DISABLED';createdAt:string;roles:Role[]};
 export type ManagedRole=Role;
 type Transition='submit'|'approve'|'reject'|'publish'|'retire';
 const session=()=>accountSession.get()?.token||'';

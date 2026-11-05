@@ -59,6 +59,10 @@ public class AdminLoginController {
             WHERE nonce_sha256=? AND consumed_at IS NULL AND expires_at>NOW()
             """,AccountIdentityController.digest(input.nonce()));
         if(consumed!=1)throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Challenge expired or replayed");
+        jdbc.update("""
+            UPDATE learning_account_identity SET verified_email=?,verified_at=NOW()
+            WHERE provider='GOOGLE' AND provider_subject=?
+            """,identity.email(),identity.subject());
         var accounts=jdbc.query("""
             SELECT a.id,a.status FROM learning_account_identity i
             JOIN learning_account a ON a.id=i.account_id
@@ -100,9 +104,9 @@ public class AdminLoginController {
         UUID account=UUID.randomUUID();
         jdbc.update("INSERT INTO learning_account(id) VALUES (?)",account);
         jdbc.update("""
-            INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at)
-            VALUES (?,'GOOGLE',?,NOW())
-            """,account,identity.subject());
+            INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at,verified_email)
+            VALUES (?,'GOOGLE',?,NOW(),?)
+            """,account,identity.subject(),identity.email());
         jdbc.update("INSERT INTO learning_account_progress(account_id) VALUES (?)",account);
         grantBootstrapRole(account);
         return account;
