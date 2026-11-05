@@ -13,8 +13,8 @@ export type QuestionSummary={id:number;factId:number;status:FactStatus;prompt:st
 export type QueueEntry={type:'FACT'|'QUESTION';id:number;status:FactStatus};
 export type ManagedAccount={accountId:string;email:string|null;status:'ACTIVE'|'DISABLED';createdAt:string;roles:Role[]};
 export type ManagedRole=Role;
-export type SeedCatalogItem={id:string;title:string;subject:string;grade:number;emoji:string;factEn:string;factFil:string;sourceTitle:string;quizEn:string;quizFil:string};
-type Transition='submit'|'approve'|'reject'|'publish'|'retire';
+export type SeedCatalogItem={id:string;title:string;category:string;subject:string;grade:number;emoji:string;factEn:string;factFil:string;sourceTitle:string;quizEn:string;quizFil:string};
+type Transition='submit'|'approve'|'reject'|'publish'|'retire'|'republish';
 const session=()=>accountSession.get()?.token||'';
 export async function adminRequest<T>(path:string,init:RequestInit={}):Promise<T>{
  const token=session();

@@ -1,6 +1,6 @@
 export type Mode='student'|'explore';
 export type Language='en'|'fil';
-export type Grade=7|8|9|'all';
+export type Grade=7|8|9|10|11|12|'all';
 export type Tab='home'|'learn'|'discover'|'quiz'|'progress'|'saved'|'profile';
 export type Question={en:string;fil:string;o:[string,string][];a:number;x:{en:string;fil:string}};
 export type Fact={id:number;g:number;s:string;e:string;en:string;fil:string;q?:Question};

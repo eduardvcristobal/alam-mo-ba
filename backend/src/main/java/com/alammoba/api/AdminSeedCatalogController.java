@@ -29,13 +29,29 @@ public class AdminSeedCatalogController {
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer) {
         access.require(bearer,"SUPER_ADMIN","EDITOR","CONTENT_ADMIN");
         return AdminContentController.privateResponse(jdbc.query("""
-            SELECT content_key,title,subject_code,grade_level,emoji,fact_en,fact_fil,
-                   source_title,quiz_en,quiz_fil
-            FROM starter_content_catalog WHERE active=TRUE ORDER BY subject_code,title
-            """,(rs,i)->Map.<String,Object>of("id",rs.getString(1),"title",rs.getString(2),
-                "subject",rs.getString(3),"grade",rs.getInt(4),"emoji",rs.getString(5),
-                "factEn",rs.getString(6),"factFil",rs.getString(7),"sourceTitle",rs.getString(8),
-                "quizEn",rs.getString(9),"quizFil",rs.getString(10))));
+            SELECT c.content_key,c.title,c.category,c.subject_code,c.grade_level,c.emoji,c.fact_en,c.fact_fil,
+                   c.source_title,c.quiz_en,c.quiz_fil
+            FROM starter_content_catalog c
+            WHERE c.active=TRUE
+              AND NOT EXISTS (
+                SELECT 1 FROM content_fact f
+                WHERE f.canonical_key=c.content_key
+                   OR EXISTS (
+                     SELECT 1 FROM content_fact_translation t
+                     WHERE t.fact_id=f.id AND (
+                       (t.locale='en' AND lower(btrim(t.body))=lower(btrim(c.fact_en))) OR
+                       (t.locale='fil' AND lower(btrim(t.body))=lower(btrim(c.fact_fil)))
+                     )
+                   )
+              )
+            ORDER BY c.category,c.title
+            """,(rs,i)->Map.<String,Object>ofEntries(
+                Map.entry("id",rs.getString(1)),Map.entry("title",rs.getString(2)),
+                Map.entry("category",rs.getString(3)),Map.entry("subject",rs.getString(4)),
+                Map.entry("grade",rs.getInt(5)),Map.entry("emoji",rs.getString(6)),
+                Map.entry("factEn",rs.getString(7)),Map.entry("factFil",rs.getString(8)),
+                Map.entry("sourceTitle",rs.getString(9)),Map.entry("quizEn",rs.getString(10)),
+                Map.entry("quizFil",rs.getString(11)))));
     }
 
     public record SeedRequest(List<String> ids) {}
@@ -47,8 +63,8 @@ public class AdminSeedCatalogController {
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
       @RequestBody SeedRequest request) {
         UUID actor=access.require(bearer,"SUPER_ADMIN","EDITOR","CONTENT_ADMIN");
-        if(request==null||request.ids()==null||request.ids().isEmpty()||request.ids().size()>100)
-            throw AdminContentController.bad("Select between 1 and 100 catalog items");
+        if(request==null||request.ids()==null||request.ids().isEmpty()||request.ids().size()>250)
+            throw AdminContentController.bad("Select between 1 and 250 catalog items");
         int facts=0,quizzes=0,skipped=0;
         for(String key:request.ids().stream().distinct().toList()) {
             var rows=jdbc.query("""

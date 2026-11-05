@@ -71,6 +71,7 @@ public class AdminWorkflowController {
             case "reject" -> {actor=access.require(bearer,"REVIEWER");from="IN_REVIEW";to="DRAFT";}
             case "publish" -> {actor=access.require(bearer,"CONTENT_ADMIN");from="APPROVED";to="PUBLISHED";}
             case "retire" -> {actor=access.require(bearer,"CONTENT_ADMIN");from="PUBLISHED";to="RETIRED";}
+            case "republish" -> {actor=access.require(bearer,"CONTENT_ADMIN");from="RETIRED";to="PUBLISHED";}
             default -> throw AdminContentController.bad("Invalid workflow action");
         }
         var records=jdbc.query("SELECT status,created_by,reviewed_by FROM "+table+" WHERE id=? FOR UPDATE",
@@ -82,18 +83,18 @@ public class AdminWorkflowController {
         if(action.equals("approve") && (actor.equals(current.author()) || current.author()==null))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "Authors cannot approve their own work. A different account with the REVIEWER or SUPER_ADMIN role must approve it.");
-        if(action.equals("publish") && (current.reviewer()==null || current.reviewer().equals(current.author())))
+        if((action.equals("publish")||action.equals("republish")) && (current.reviewer()==null || current.reviewer().equals(current.author())))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,"An independent review is required");
         if(action.equals("approve"))verifyDraft(type,id);
-        if(action.equals("publish"))verifyPublish(type,id);
+        if(action.equals("publish")||action.equals("republish"))verifyPublish(type,id);
         int changed;
         if(action.equals("approve")) {
             changed=jdbc.update("UPDATE "+table+" SET status='APPROVED',reviewed_by=?,reviewed_at=NOW() WHERE id=? AND status='IN_REVIEW'",
                 actor,id);
             if(type.equals("fact"))jdbc.update("UPDATE content_fact SET verified_at=NOW() WHERE id=?",id);
-        } else if(action.equals("publish")) {
-            changed=jdbc.update("UPDATE "+table+" SET status='PUBLISHED',published_by=?,published_at=NOW() WHERE id=? AND status='APPROVED'",
-                actor,id);
+        } else if(action.equals("publish")||action.equals("republish")) {
+            changed=jdbc.update("UPDATE "+table+" SET status='PUBLISHED',published_by=?,published_at=NOW() WHERE id=? AND status=?",
+                actor,id,from);
         } else {
             changed=jdbc.update("UPDATE "+table+" SET status=? WHERE id=? AND status=?",to,id,from);
             if(action.equals("reject"))jdbc.update("UPDATE "+table+" SET reviewed_by=NULL,reviewed_at=NULL WHERE id=?",id);

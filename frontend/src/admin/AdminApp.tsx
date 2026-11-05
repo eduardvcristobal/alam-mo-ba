@@ -41,6 +41,8 @@ export default function AdminApp(){
  const [showSeedCatalog,setShowSeedCatalog]=useState(false);
  const [seedCatalog,setSeedCatalog]=useState<SeedCatalogItem[]>([]);
  const [selectedSeedIds,setSelectedSeedIds]=useState<string[]>([]);
+ const [seedSearch,setSeedSearch]=useState('');
+ const [seedCategory,setSeedCategory]=useState('All categories');
  const [loadingSeedCatalog,setLoadingSeedCatalog]=useState(false);
  const [error,setError]=useState('');
  const [toast,setToast]=useState<{kind:'error'|'success';text:string}|null>(null);
@@ -51,6 +53,9 @@ export default function AdminApp(){
  const [signingOut,setSigningOut]=useState(false);
  const [accountMenuOpen,setAccountMenuOpen]=useState(false);
  const roles=me?.roles||[];
+ const seedCategories=['All categories',...Array.from(new Set(seedCatalog.map(item=>item.category))).sort()];
+ const visibleSeedCatalog=seedCatalog.filter(item=>(seedCategory==='All categories'||item.category===seedCategory)&&`${item.title} ${item.category} ${item.subject} ${item.grade} ${item.factEn} ${item.factFil} ${item.sourceTitle}`.toLocaleLowerCase().includes(seedSearch.trim().toLocaleLowerCase()));
+ const allVisibleSeedsSelected=visibleSeedCatalog.length>0&&visibleSeedCatalog.every(item=>selectedSeedIds.includes(item.id));
  const allowed=(...r:string[])=>roles.includes('SUPER_ADMIN')||r.some(role=>roles.includes(role as typeof roles[number]));
  const refresh=useCallback(async()=>{
   const [overview,factRows,questionRows,review]=await Promise.all([
@@ -186,6 +191,10 @@ export default function AdminApp(){
        if(window.confirm('Retire this published fact from the learner library?'))
         void run(()=>adminApi.transition('fact',f.id,'retire'),'Fact retired');
       }}>Retire</button>}
+      {allowed('CONTENT_ADMIN')&&f.status==='RETIRED'&&<button disabled={busy} className="admin-primary" onClick={()=>{
+       if(window.confirm('Republish this retired fact? It will become available to learners again.'))
+        void run(()=>adminApi.transition('fact',f.id,'republish'),'Fact restored and republished');
+      }}>Republish</button>}
       </td></tr>)}</tbody></table></div>{!facts.length&&<p>No content yet. Create your first bilingual fact.</p>}</section>}
    {view==='questions'&&<section className="admin-panel"><div className="panel-head"><h2>Question bank</h2>
     {allowed('EDITOR','CONTENT_ADMIN')&&<button className="admin-primary" onClick={()=>{setEditingQuestion(null);setQuizForm(emptyQuiz());setShowQuiz(true);}}>+ Add question</button>}</div>
@@ -201,6 +210,10 @@ export default function AdminApp(){
        if(window.confirm('Retire this quiz question?'))
         void run(()=>adminApi.transition('question',q.id,'retire'),'Question retired');
       }}>Retire</button>}
+      {allowed('CONTENT_ADMIN')&&q.status==='RETIRED'&&<button disabled={busy} className="admin-primary" onClick={()=>{
+       if(window.confirm('Republish this retired quiz question? It will become available to learners again.'))
+        void run(()=>adminApi.transition('question',q.id,'republish'),'Quiz question restored and republished');
+      }}>Republish</button>}
      </td></tr>)}</tbody></table></div>{!questions.length&&<p>No quiz questions created yet.</p>}</section>}
    {view==='review'&&<section className="admin-panel review-wizard"><div className="panel-head"><div><h2>Review and publication queue</h2><span className="review-progress">{queue.length?`Item ${Math.min(reviewIndex+1,queue.length)} of ${queue.length}`:'0 items'}</span></div>
     {queue.length>0&&<div className="wizard-controls"><button disabled={reviewIndex===0} onClick={()=>setReviewIndex(index=>Math.max(0,index-1))}>← Previous</button><button disabled={reviewIndex>=queue.length-1} onClick={()=>setReviewIndex(index=>Math.min(queue.length-1,index+1))}>Next →</button></div>}</div>
@@ -283,7 +296,7 @@ export default function AdminApp(){
     <div className="admin-inline"><label><input type="checkbox" checked={factForm.student} onChange={e=>setFactForm(p=>({...p,student:e.target.checked}))}/> Student</label>
     <label><input type="checkbox" checked={factForm.explore} onChange={e=>setFactForm(p=>({...p,explore:e.target.checked}))}/> Explore</label>
     {factForm.student&&<label>Grade<select value={factForm.grade??7} onChange={e=>setFactForm(p=>({...p,grade:Number(e.target.value)}))}>
-     {[7,8,9].map(g=><option key={g} value={g}>{g}</option>)}</select></label>}</div>
+     {[7,8,9,10,11,12].map(g=><option key={g} value={g}>{g}</option>)}</select></label>}</div>
    </div><div className="admin-modal-actions"><button type="button" onClick={()=>setShowFact(false)}>Cancel</button>
     <button className="admin-primary" disabled={busy} type="submit">Save draft</button></div></form></div>}
   {showQuiz&&<div className="admin-modal-bg" role="presentation"><form className="admin-modal" onSubmit={e=>{e.preventDefault();void run(async()=>{
@@ -311,14 +324,19 @@ export default function AdminApp(){
    <div className="panel-head"><div><h2 id="seed-title">Choose starter content</h2><p>Select facts and their linked quiz questions to add as drafts.</p></div>
     <button type="button" onClick={()=>setShowSeedCatalog(false)}>✕</button></div>
    {loadingSeedCatalog?<p>Loading catalog…</p>:<>
-    <div className="seed-catalog-list">{seedCatalog.map(item=><label className="seed-catalog-card" key={item.id}>
+     <div className="seed-catalog-toolbar"><label>Search facts, topics, or source<input type="search" value={seedSearch} placeholder="e.g. water, Moon, weather" onChange={event=>setSeedSearch(event.target.value)}/></label>
+     <label>Category<select value={seedCategory} onChange={event=>setSeedCategory(event.target.value)}>{seedCategories.map(category=><option key={category}>{category}</option>)}</select></label>
+     <button type="button" onClick={()=>setSelectedSeedIds(ids=>allVisibleSeedsSelected?ids.filter(id=>!visibleSeedCatalog.some(item=>item.id===id)):[...new Set([...ids,...visibleSeedCatalog.map(item=>item.id)])])}>{allVisibleSeedsSelected?'Deselect visible':'Select visible'}</button>
+     <small>Showing {visibleSeedCatalog.length} of {seedCatalog.length} · {selectedSeedIds.length} selected</small></div>
+    <div className="seed-catalog-list">{visibleSeedCatalog.map(item=><label className="seed-catalog-card" key={item.id}>
      <input type="checkbox" checked={selectedSeedIds.includes(item.id)} onChange={event=>setSelectedSeedIds(ids=>event.target.checked?[...ids,item.id]:ids.filter(id=>id!==item.id))}/>
-     <span><b>{item.emoji} {item.title}</b><small>{item.subject} · Grade {item.grade}</small>
+     <span><b>{item.emoji} {item.title}</b><small>{item.category} · {item.subject} · Grade {item.grade}</small>
       <span className="seed-preview"><b>Fact (EN)</b>{item.factEn}<b>Fact (Filipino)</b>{item.factFil}
        <b>Quiz</b>{item.quizEn}<span>{item.quizFil}</span></span><small>Source: {item.sourceTitle}</small>
      </span>
     </label>)}</div>
-    {!seedCatalog.length&&<p>No starter content is available.</p>}
+    {!seedCatalog.length&&<p>All starter catalog facts are already in your facts library.</p>}
+    {seedCatalog.length>0&&!visibleSeedCatalog.length&&<p>No catalog items match that search.</p>}
    </>}
    <div className="admin-modal-actions"><button type="button" onClick={()=>setShowSeedCatalog(false)}>Cancel</button>
     <button className="admin-primary" disabled={busy||loadingSeedCatalog||!selectedSeedIds.length} onClick={()=>void run(async()=>{
