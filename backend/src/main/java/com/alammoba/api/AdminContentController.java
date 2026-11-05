@@ -73,6 +73,7 @@ public class AdminContentController {
     public ResponseEntity<Map<String,Object>> create(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
                                                       @RequestBody FactDraft input){
         UUID actor=access.require(bearer,"EDITOR","CONTENT_ADMIN");
+        PlatformSettingsController.requireSubmissionsEnabled(jdbc);
         validate(input);
         Long id=jdbc.queryForObject("""
             INSERT INTO content_fact(canonical_key,subject_code,emoji,status,created_by)

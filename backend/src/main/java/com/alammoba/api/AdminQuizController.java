@@ -62,6 +62,7 @@ public class AdminQuizController {
     public ResponseEntity<Map<String,Object>> create(
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,@RequestBody QuestionDraft input){
         UUID actor=access.require(bearer,"EDITOR","CONTENT_ADMIN");
+        PlatformSettingsController.requireSubmissionsEnabled(jdbc);
         validate(input);
         ensureFact(input.factId());
         Long id=jdbc.queryForObject("""

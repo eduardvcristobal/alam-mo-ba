@@ -10,6 +10,13 @@ spring:
   flyway:
     enabled: true
 app:
+  google:
+    client-id: ${APP_GOOGLE_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
+  account:
+    registration-enabled: ${APP_ACCOUNT_REGISTRATION_ENABLED:false}
+  admin:
+    google-login-enabled: ${APP_ADMIN_GOOGLE_LOGIN_ENABLED:${ADMIN_GOOGLE_LOGIN_ENABLED:false}}
+    bootstrap-email: ${PLATFORM_ADMIN_EMAIL:}
   cors:
     origin: ${CORS_ORIGIN:http://localhost:5173}
   rate-limit:

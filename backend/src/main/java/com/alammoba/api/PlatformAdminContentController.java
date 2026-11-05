@@ -26,10 +26,6 @@ public class PlatformAdminContentController {
     public record QuizDraft(long factId,String en,String fil,String explanationEn,
                             String explanationFil,List<ChoiceDraft> choices) {}
 
-    @GetMapping("/me")
-    public ResponseEntity<?> me(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth){
-        return privateResponse(guard.require(auth));
-    }
     @GetMapping("/dashboard")
     public ResponseEntity<?> dashboard(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth){
         guard.require(auth);
@@ -41,19 +37,6 @@ public class PlatformAdminContentController {
         data.put("pendingQuizzes",db.queryForObject("SELECT count(*) FROM quiz_question WHERE status='IN_REVIEW'",Long.class));
         data.put("publishedQuizzes",db.queryForObject("SELECT count(*) FROM quiz_question WHERE status='PUBLISHED'",Long.class));
         return privateResponse(data);
-    }
-    @GetMapping("/facts")
-    public ResponseEntity<?> facts(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
-        @RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="30") int limit) {
-        guard.require(auth);
-        checkPaging(offset,limit);
-        return privateResponse(db.query("""
-            SELECT id,canonical_key,subject_code,emoji,status,verified_at,created_at
-            FROM content_fact ORDER BY id DESC LIMIT ? OFFSET ?
-            """,(rs,n)->Map.of("id",rs.getLong(1),"key",rs.getString(2),
-            "subject",rs.getString(3),"emoji",rs.getString(4)==null?"":rs.getString(4),
-            "status",rs.getString(5),"verified",rs.getTimestamp(6)!=null,
-            "createdAt",rs.getTimestamp(7).toInstant().toString()),limit,offset));
     }
     @GetMapping("/facts/{id}")
     public ResponseEntity<?> fact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@PathVariable long id){
@@ -82,35 +65,6 @@ public class PlatformAdminContentController {
         return privateResponse(result);
     }
 
-    @Transactional
-    @PostMapping("/facts")
-    public ResponseEntity<?> createFact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,@RequestBody FactDraft payload){
-        var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkFact(payload);
-        Long id=db.queryForObject("""
-            INSERT INTO content_fact(canonical_key,subject_code,emoji,status,created_by)
-            VALUES (?,?,?,'DRAFT',?) RETURNING id
-            """,Long.class,payload.key().trim(),payload.subject(),payload.emoji(),user.id());
-        writeFact(id,payload);
-        event("FACT",id,"CREATE",user.id(),null,"DRAFT",null);
-        return privateResponse(Map.of("id",id,"status","DRAFT"));
-    }
-    @Transactional
-    @PutMapping("/facts/{id}")
-    public ResponseEntity<?> updateFact(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
-                                        @PathVariable long id,@RequestBody FactDraft payload){
-        var user=guard.require(auth);PlatformAdminGuard.requireEdit(user);checkFact(payload);
-        int count=db.update("""
-            UPDATE content_fact SET canonical_key=?,subject_code=?,emoji=?,verified_at=NULL,
-            updated_at=NOW() WHERE id=? AND status='DRAFT'
-            """,payload.key().trim(),payload.subject(),payload.emoji(),id);
-        if(count!=1)throw conflict("Only draft facts can be edited");
-        db.update("DELETE FROM content_fact_translation WHERE fact_id=?",id);
-        db.update("DELETE FROM content_fact_audience WHERE fact_id=?",id);
-        db.update("DELETE FROM content_source WHERE fact_id=?",id);
-        writeFact(id,payload);
-        event("FACT",id,"UPDATE",user.id(),"DRAFT","DRAFT",null);
-        return privateResponse(Map.of("id",id,"status","DRAFT"));
-    }
     @GetMapping("/quizzes")
     public ResponseEntity<?> quizzes(@RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String auth,
                                      @RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="30") int limit){

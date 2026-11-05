@@ -11,6 +11,8 @@ export type QuizOption={en:string;fil:string;correct:boolean};
 export type QuestionDraft={factId:number;en:string;fil:string;explanationEn:string;explanationFil:string;options:QuizOption[]};
 export type QuestionSummary={id:number;factId:number;status:FactStatus;prompt:string};
 export type QueueEntry={type:'FACT'|'QUESTION';id:number;status:FactStatus};
+export type ManagedAccount={accountId:string;email:string|null;status:'ACTIVE'|'DISABLED';createdAt:string;roles:Role[]};
+export type ManagedRole=Role;
 type Transition='submit'|'approve'|'reject'|'publish'|'retire';
 const session=()=>accountSession.get()?.token||'';
 export async function adminRequest<T>(path:string,init:RequestInit={}):Promise<T>{
@@ -37,6 +39,9 @@ export const adminApi={
  questions:()=>adminRequest<QuestionSummary[]>('/questions'),
  question:(id:number)=>adminRequest<Record<string,unknown>>('/questions/'+id),
  queue:()=>adminRequest<QueueEntry[]>('/workflow/queue'),
+ roleAccounts:()=>adminRequest<ManagedAccount[]>('/roles/accounts'),
+ changeRole:(data:{accountId:string;role:ManagedRole;action:'GRANT'|'REVOKE';reason:string})=>
+  adminRequest<{accountId:string;role:ManagedRole;action:'GRANT'|'REVOKE';changed:boolean}>('/roles/change',json('POST',data)),
  createFact:(data:FactDraft)=>adminRequest<{id:number;status:FactStatus}>('/facts',json('POST',data)),
  updateFact:(id:number,data:FactDraft)=>adminRequest<{id:number;status:FactStatus}>('/facts/'+id,json('PUT',data)),
  deleteFact:(id:number)=>adminRequest<{id:number;deleted:boolean}>('/facts/'+id,{method:'DELETE'}),

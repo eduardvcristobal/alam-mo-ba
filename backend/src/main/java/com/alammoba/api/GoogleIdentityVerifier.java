@@ -2,6 +2,7 @@ package com.alammoba.api;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
@@ -20,6 +21,8 @@ import org.springframework.http.HttpStatus;
  */
 @Component
 public class GoogleIdentityVerifier {
+    public record VerifiedIdentity(String subject, String email) {}
+
     private final String clientId;
     private final JwtDecoder decoder;
 
@@ -37,6 +40,10 @@ public class GoogleIdentityVerifier {
     }
 
     public String verifySubject(String signedToken, String expectedNonce) {
+        return verifyIdentity(signedToken, expectedNonce).subject();
+    }
+
+    public VerifiedIdentity verifyIdentity(String signedToken, String expectedNonce) {
         if (decoder == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Google login not configured");
         }
@@ -45,13 +52,18 @@ public class GoogleIdentityVerifier {
         }
         try {
             Jwt jwt = decoder.decode(signedToken);
-            return validateClaims(jwt, clientId, expectedNonce);
+            return validateIdentityClaims(jwt, clientId, expectedNonce);
         } catch (JwtException ex) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google identity token");
         }
     }
 
     static String validateClaims(Jwt jwt, String clientId, String nonce) {
+        return validateIdentityClaims(jwt, clientId, nonce).subject();
+    }
+
+    static VerifiedIdentity validateIdentityClaims(Jwt jwt, String clientId, String nonce) {
+        String email=jwt.getClaimAsString("email");
         if (clientId == null || clientId.isBlank() || nonce == null || nonce.isBlank() ||
                 !jwt.getAudience().contains(clientId) ||
                 !Set.of("https://accounts.google.com").contains(jwt.getIssuer().toString()) ||
@@ -59,10 +71,11 @@ public class GoogleIdentityVerifier {
                 !Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")) ||
                 jwt.getSubject() == null || jwt.getSubject().isBlank() ||
                 jwt.getSubject().length() > 255 ||
+                email == null || email.isBlank() || email.length() > 320 ||
                 jwt.getExpiresAt() == null || !jwt.getExpiresAt().isAfter(Instant.now()) ||
                 jwt.getIssuedAt() == null || jwt.getIssuedAt().isAfter(Instant.now().plusSeconds(60))) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google identity claims");
         }
-        return jwt.getSubject();
+        return new VerifiedIdentity(jwt.getSubject(),email.trim().toLowerCase(Locale.ROOT));
     }
 }
