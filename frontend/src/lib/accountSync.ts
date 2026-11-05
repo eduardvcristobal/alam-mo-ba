@@ -30,6 +30,7 @@ async function parsed<T>(path:string,init:RequestInit={},token?:string):Promise<
            ...(token?{Authorization:'Bearer '+token}:{}),...init.headers}
  });
  if(response.status===409)throw new AccountConflictError();
+ if(response.status===503)throw new Error('Google account sign-in is disabled. Set APP_ACCOUNT_REGISTRATION_ENABLED=true in the backend environment, then restart the backend.');
  if(!response.ok)throw new Error('Account API returned HTTP '+response.status);
  return response.json() as Promise<T>;
 }
