@@ -53,6 +53,21 @@ assert psql(f"SELECT topic_id FROM content_fact WHERE id={fid}",True)==str(tid)
 code,accounts=call("/admin/learners",token=support_token)
 assert code==200 and any(x["id"]==learner_id for x in accounts),(code,accounts)
 assert "email" not in str(accounts).lower() and "provider_subject" not in str(accounts).lower()
+code,_=call("/admin/roles/change","POST",support_token,
+ {"accountId":learner_id,"role":"REVIEWER","action":"GRANT","reason":"CI role authorization check"})
+assert code==403,code
+code,grant=call("/admin/roles/change","POST",super_token,
+ {"accountId":learner_id,"role":"REVIEWER","action":"GRANT","reason":"CI role grant"})
+assert code==200 and grant["changed"],(code,grant)
+code,role_accounts=call("/admin/roles/accounts",token=super_token)
+assert code==200 and any(x["accountId"]==learner_id and "REVIEWER" in x["roles"] for x in role_accounts),(code,role_accounts)
+code,_=call("/admin/roles/change","POST",super_token,
+ {"accountId":super_id,"role":"SUPER_ADMIN","action":"REVOKE","reason":"CI self protection"})
+assert code==409,code
+code,revoked=call("/admin/roles/change","POST",super_token,
+ {"accountId":learner_id,"role":"REVIEWER","action":"REVOKE","reason":"CI role revoke"})
+assert code==200 and revoked["changed"],(code,revoked)
+assert "GRANT_PLATFORM_ROLE" in psql("SELECT action FROM platform_operator_audit WHERE target_id='"+learner_id+"' ORDER BY id DESC LIMIT 2",True)
 code,_=call(f"/admin/learners/{learner_id}/status","PUT",editor_token,
  {"status":"DISABLED","reason":"Synthetic CI suspension"})
 assert code==403,code

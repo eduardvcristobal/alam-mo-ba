@@ -1,12 +1,12 @@
 import {useCallback,useEffect,useState} from 'react';
 import {adminApi,adminRequest} from './adminApi';
 import AdminLogin from './AdminLogin';
-import type {AdminMe,Fact,FactDraft,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
+import type {AdminMe,Fact,FactDraft,ManagedAccount,ManagedRole,Overview,QuestionDraft,QuestionSummary,QueueEntry} from './adminApi';
 import {accountSession,logoutAccount} from '../lib/accountSync';
 import {seedStarterContent} from './adminSeed';
 import './admin.css';
 
-type View='dashboard'|'facts'|'questions'|'review';
+type View='dashboard'|'facts'|'questions'|'review'|'access';
 const adminRequestVerify=(id:number)=>adminRequest('/workflow/fact/'+id+'/verify-source',{method:'POST'});
 const emptyFact=():FactDraft=>({key:'',subject:'Science',emoji:'💡',en:'',fil:'',student:true,grade:7,explore:true,sourceTitle:'',sourceUrl:''});
 const emptyQuiz=():QuestionDraft=>({factId:0,en:'',fil:'',explanationEn:'',explanationFil:'',
@@ -15,7 +15,8 @@ const tabs:{id:View;icon:string;title:string;subtitle:string}[]=[
  {id:'dashboard',icon:'▦',title:'Dashboard',subtitle:'Platform overview'},
  {id:'facts',icon:'▤',title:'Facts & Content',subtitle:'Bilingual knowledge library'},
  {id:'questions',icon:'◇',title:'Quiz Bank',subtitle:'Question authoring'},
- {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'}
+ {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'},
+ {id:'access',icon:'♙',title:'Access & Roles',subtitle:'Manage platform operator access'}
 ];
 export default function AdminApp(){
  const [me,setMe]=useState<AdminMe|null>(null);
@@ -24,6 +25,11 @@ export default function AdminApp(){
  const [facts,setFacts]=useState<Fact[]>([]);
  const [questions,setQuestions]=useState<QuestionSummary[]>([]);
  const [queue,setQueue]=useState<QueueEntry[]>([]);
+ const [managedAccounts,setManagedAccounts]=useState<ManagedAccount[]>([]);
+ const [roleAccountId,setRoleAccountId]=useState('');
+ const [roleName,setRoleName]=useState<ManagedRole>('REVIEWER');
+ const [roleAction,setRoleAction]=useState<'GRANT'|'REVOKE'>('GRANT');
+ const [roleReason,setRoleReason]=useState('');
  const [factForm,setFactForm]=useState<FactDraft>(emptyFact);
  const [quizForm,setQuizForm]=useState<QuestionDraft>(emptyQuiz);
  const [editingFact,setEditingFact]=useState<number|null>(null);
@@ -58,6 +64,11 @@ export default function AdminApp(){
   catch(e){setError(e instanceof Error?e.message:'Request failed');}
   finally{setBusy(false);}
  };
+ useEffect(()=>{
+  if(view!=='access'||!roles.includes('SUPER_ADMIN'))return;
+  adminApi.roleAccounts().then(setManagedAccounts)
+   .catch(e=>setError(e instanceof Error?e.message:'Could not load account roles'));
+ },[view,me]);
  const signOut=async()=>{
   if(signingOut)return;
   setSigningOut(true);setError('');setMessage('');
@@ -93,7 +104,7 @@ export default function AdminApp(){
  return <div className="admin-shell">
   <aside className="admin-side">
    <div className="admin-brand"><span>💡</span><div><b>Alam Mo Ba?</b><small>Platform Administration</small></div></div>
-   <nav aria-label="Administrator navigation">{tabs.map(tab=><button key={tab.id}
+   <nav aria-label="Administrator navigation">{tabs.filter(tab=>tab.id!=='access'||roles.includes('SUPER_ADMIN')).map(tab=><button key={tab.id}
      className={view===tab.id?'selected':''} aria-current={view===tab.id?'page':undefined}
      onClick={()=>{setView(tab.id);setError('');setMessage('');}}>
      <span className="nav-symbol">{tab.icon}</span><span>{tab.title}</span></button>)}</nav>
@@ -180,6 +191,37 @@ export default function AdminApp(){
        <button disabled={busy} onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'reject'),'Returned to draft')}>Reject</button></>}
       {item.status==='APPROVED'&&allowed('CONTENT_ADMIN')&&<button disabled={busy} className="admin-primary" onClick={()=>void run(()=>adminApi.transition(item.type.toLowerCase() as 'fact'|'question',item.id,'publish'),'Published to learners')}>Publish</button>}
      </td></tr>)}</tbody></table>{!queue.length&&<p>No items are awaiting editorial action.</p>}</div>}</section>}
+   {view==='access'&&roles.includes('SUPER_ADMIN')&&<>
+    <section className="admin-panel"><h2>Grant or revoke a platform role</h2>
+     <p>Only active accounts can receive a role. Changes are recorded in the platform audit log.</p>
+     <form className="role-form" onSubmit={event=>{event.preventDefault();
+      if(roleAction==='REVOKE'&&!window.confirm(`Revoke ${roleName} from ${roleAccountId}?`))return;
+      void run(async()=>{
+       const result=await adminApi.changeRole({accountId:roleAccountId.trim(),role:roleName,action:roleAction,reason:roleReason.trim()});
+       setManagedAccounts(await adminApi.roleAccounts());setRoleReason('');
+       return result.changed?`${roleName} ${roleAction==='GRANT'?'granted':'revoked'}.`:`${roleAccountId} already has no change for ${roleName}.`;
+      },'Role assignment updated.');
+     }}>
+      <label>Account ID<input required value={roleAccountId} placeholder="Paste the account UUID" onChange={event=>setRoleAccountId(event.target.value)}/></label>
+      <label>Role<select value={roleName} onChange={event=>setRoleName(event.target.value as ManagedRole)}>
+       {(['REVIEWER','EDITOR','CONTENT_ADMIN','SUPPORT','SUPER_ADMIN'] as ManagedRole[]).map(role=><option key={role}>{role}</option>)}
+      </select></label>
+      <label>Action<select value={roleAction} onChange={event=>setRoleAction(event.target.value as 'GRANT'|'REVOKE')}>
+       <option value="GRANT">Grant</option><option value="REVOKE">Revoke</option>
+      </select></label>
+      <label>Reason<input required maxLength={500} value={roleReason} placeholder="Why is this role changing?" onChange={event=>setRoleReason(event.target.value)}/></label>
+      <button className="admin-primary" disabled={busy} type="submit">{roleAction==='GRANT'?'Grant role':'Revoke role'}</button>
+     </form>
+    </section>
+    <section className="admin-panel"><div className="panel-head"><h2>Accounts</h2><button disabled={busy} onClick={()=>void adminApi.roleAccounts().then(setManagedAccounts).catch(e=>setError(e instanceof Error?e.message:'Could not load accounts'))}>Refresh</button></div>
+     <p>Account IDs are pseudonymous. Select an account below, then choose a role and enter a reason above. Showing the 100 most recently created accounts.</p>
+     <div className="admin-scroll"><table><thead><tr><th>Account ID</th><th>Status</th><th>Created</th><th>Roles</th><th>Action</th></tr></thead><tbody>
+      {managedAccounts.map(account=><tr key={account.accountId}><td><code>{account.accountId}</code></td><td>{account.status}</td>
+       <td>{new Date(account.createdAt).toLocaleString()}</td><td>{account.roles.length?account.roles.join(' · '):'Learner'}</td>
+       <td><button onClick={()=>setRoleAccountId(account.accountId)}>Select</button></td></tr>)}
+     </tbody></table>{!managedAccounts.length&&<p>No accounts found.</p>}</div>
+    </section>
+   </>}
   </main>
   {showFact&&<div className="admin-modal-bg" role="presentation"><form className="admin-modal" onSubmit={e=>{e.preventDefault();void run(async()=>{
     if(editingFact)await adminApi.updateFact(editingFact,factForm);else await adminApi.createFact(factForm);
