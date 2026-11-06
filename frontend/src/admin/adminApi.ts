@@ -13,7 +13,7 @@ export type QuestionSummary={id:number;factId:number;status:FactStatus;prompt:st
 export type QueueEntry={type:'FACT'|'QUESTION';id:number;status:FactStatus};
 export type ManagedAccount={accountId:string;email:string|null;status:'ACTIVE'|'DISABLED';createdAt:string;roles:Role[]};
 export type ManagedRole=Role;
-export type SeedCatalogItem={id:string;title:string;category:string;subject:string;grade:number;emoji:string;factEn:string;factFil:string;sourceTitle:string;quizEn:string;quizFil:string};
+export type SeedCatalogItem={id:string;title:string;category:string;subject:string;grade:number;emoji:string;factEn:string;factFil:string;sourceTitle:string;quizEn:string;quizFil:string;explanationEn:string;explanationFil:string;options:QuizOption[];factExists:boolean};
 type Transition='submit'|'approve'|'reject'|'publish'|'retire'|'republish';
 const session=()=>accountSession.get()?.token||'';
 export async function adminRequest<T>(path:string,init:RequestInit={}):Promise<T>{
@@ -37,8 +37,8 @@ const json=(method:'POST'|'PUT',data:unknown):RequestInit=>({method,body:JSON.st
 export const adminApi={
  me:()=>adminRequest<AdminMe>('/me'),
  overview:()=>adminRequest<Overview>('/overview'),
- facts:()=>adminRequest<Fact[]>('/facts'),
- questions:()=>adminRequest<QuestionSummary[]>('/questions'),
+ facts:(limit=100,offset=0)=>adminRequest<Fact[]>(`/facts?limit=${limit}&offset=${offset}`),
+ questions:(limit=100,offset=0)=>adminRequest<QuestionSummary[]>(`/questions?limit=${limit}&offset=${offset}`),
  question:(id:number)=>adminRequest<Record<string,unknown>>('/questions/'+id),
  queue:()=>adminRequest<QueueEntry[]>('/workflow/queue'),
  roleAccounts:()=>adminRequest<ManagedAccount[]>('/roles/accounts'),

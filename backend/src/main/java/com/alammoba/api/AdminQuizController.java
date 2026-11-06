@@ -24,15 +24,16 @@ public class AdminQuizController {
     @GetMapping
     public ResponseEntity<List<Map<String,Object>>> list(
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
-      @RequestParam(defaultValue="50") int limit){
+      @RequestParam(defaultValue="50") int limit,
+      @RequestParam(defaultValue="0") int offset){
         access.require(bearer);
-        if(limit<1||limit>100)throw AdminContentController.bad("Invalid limit");
+        if(limit<1||limit>100||offset<0)throw AdminContentController.bad("Invalid pagination");
         return AdminContentController.privateResponse(jdbc.query("""
             SELECT q.id,q.fact_id,q.status,
               (SELECT t.prompt FROM quiz_question_translation t WHERE t.question_id=q.id AND t.locale='en')
-            FROM quiz_question q ORDER BY q.id DESC LIMIT ?
+            FROM quiz_question q ORDER BY q.id DESC LIMIT ? OFFSET ?
             """,(rs,i)->Map.<String,Object>of("id",rs.getLong(1),"factId",rs.getLong(2),
-               "status",rs.getString(3),"prompt",rs.getString(4)==null?"":rs.getString(4)),limit));
+               "status",rs.getString(3),"prompt",rs.getString(4)==null?"":rs.getString(4)),limit,offset));
     }
     @GetMapping("/{id}")
     public ResponseEntity<Map<String,Object>> detail(

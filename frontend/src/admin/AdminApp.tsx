@@ -17,6 +17,15 @@ const tabs:{id:View;icon:string;title:string;subtitle:string}[]=[
  {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'},
  {id:'access',icon:'♙',title:'Access & Roles',subtitle:'Manage platform operator access'}
 ];
+async function loadAllPages<T>(fetchPage:(limit:number,offset:number)=>Promise<T[]>):Promise<T[]>{
+ const pageSize=100;
+ const all:T[]=[];
+ for(let offset=0;;offset+=pageSize){
+  const page=await fetchPage(pageSize,offset);
+  all.push(...page);
+  if(page.length<pageSize)return all;
+ }
+}
 export default function AdminApp(){
  const [me,setMe]=useState<AdminMe|null>(null);
  const [view,setView]=useState<View>('dashboard');
@@ -64,7 +73,7 @@ export default function AdminApp(){
  const allowed=(...r:string[])=>roles.includes('SUPER_ADMIN')||r.some(role=>roles.includes(role as typeof roles[number]));
  const refresh=useCallback(async()=>{
   const [overview,factRows,questionRows,review]=await Promise.all([
-   adminApi.overview(),adminApi.facts(),adminApi.questions(),
+   adminApi.overview(),loadAllPages(adminApi.facts),loadAllPages(adminApi.questions),
    adminApi.queue().catch(()=>[] as QueueEntry[])
   ]);
   setStats(overview);setFacts(factRows);setQuestions(questionRows);setQueue(review);
@@ -460,12 +469,14 @@ export default function AdminApp(){
      <small>Showing {visibleSeedCatalog.length} of {seedCatalog.length} · {selectedSeedIds.length} selected</small></div>
     <div className="seed-catalog-list">{visibleSeedCatalog.map(item=><label className="seed-catalog-card" key={item.id}>
      <input type="checkbox" checked={selectedSeedIds.includes(item.id)} onChange={event=>setSelectedSeedIds(ids=>event.target.checked?[...ids,item.id]:ids.filter(id=>id!==item.id))}/>
-     <span><b>{item.emoji} {item.title}</b><small>{item.category} · {item.subject} · Grade {item.grade}</small>
+     <span><b>{item.emoji} {item.title}</b><small>{item.category} · {item.subject} · Grade {item.grade}{item.factExists?' · Existing fact; adds a quiz draft only':''}</small>
       <span className="seed-preview"><b>Fact (EN)</b>{item.factEn}<b>Fact (Filipino)</b>{item.factFil}
-       <b>Quiz</b>{item.quizEn}<span>{item.quizFil}</span></span><small>Source: {item.sourceTitle}</small>
+       <b>Quiz (EN)</b>{item.quizEn}<b>Quiz (Filipino)</b><span>{item.quizFil}</span>
+       <b>Answer choices</b>{item.options.map((option,index)=><span key={`${item.id}-option-${index}`}>{String.fromCharCode(65+index)}. {option.en} / {option.fil}{option.correct?' ✓':''}</span>)}
+       <b>Explanation (EN)</b>{item.explanationEn}<b>Explanation (Filipino)</b><span>{item.explanationFil}</span></span><small>Source: {item.sourceTitle}</small>
      </span>
     </label>)}</div>
-    {!seedCatalog.length&&<p>All starter catalog facts are already in your facts library.</p>}
+    {!seedCatalog.length&&<p>All starter facts and quiz drafts from this catalog have already been added.</p>}
     {seedCatalog.length>0&&!visibleSeedCatalog.length&&<p>No catalog items match that search.</p>}
    </>}
    <div className="admin-modal-actions"><button type="button" onClick={()=>setShowSeedCatalog(false)}>Cancel</button>

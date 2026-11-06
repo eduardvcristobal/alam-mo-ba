@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Alam Mo Ba? — Learn & Play",
+  "short_name": "Alam Mo Ba?",
+  "description": "A bilingual Filipino learning app with facts, quizzes, and progress tracking.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#f2f5ff",
+  "theme_color": "#0038a8",
+  "categories": ["education", "games"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

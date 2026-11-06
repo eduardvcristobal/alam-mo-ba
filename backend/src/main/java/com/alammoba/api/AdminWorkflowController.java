@@ -29,7 +29,7 @@ public class AdminWorkflowController {
                SELECT 'FACT' entity_type,id,status FROM content_fact WHERE status IN ('IN_REVIEW','APPROVED')
                UNION ALL
                SELECT 'QUESTION' entity_type,id,status FROM quiz_question WHERE status IN ('IN_REVIEW','APPROVED')
-            ) w ORDER BY entity_type,id LIMIT 100
+            ) w ORDER BY entity_type,id
             """,(rs,i)->Map.<String,Object>of("type",rs.getString(1),"id",rs.getLong(2),"status",rs.getString(3))));
     }
     /** A reviewer must explicitly confirm that they inspected the cited HTTPS source. */
