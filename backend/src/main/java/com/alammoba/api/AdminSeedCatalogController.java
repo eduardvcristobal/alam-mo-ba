@@ -30,19 +30,28 @@ public class AdminSeedCatalogController {
         access.require(bearer,"SUPER_ADMIN","EDITOR","CONTENT_ADMIN");
         return AdminContentController.privateResponse(jdbc.query("""
             SELECT c.content_key,c.title,c.category,c.subject_code,c.grade_level,c.emoji,c.fact_en,c.fact_fil,
-                   c.source_title,c.quiz_en,c.quiz_fil
+                   c.source_title,c.quiz_en,c.quiz_fil,c.explanation_en,c.explanation_fil,c.options::text,
+                   EXISTS (SELECT 1 FROM content_fact f WHERE f.canonical_key=c.content_key
+                     OR EXISTS (SELECT 1 FROM content_fact_translation t WHERE t.fact_id=f.id AND
+                       ((t.locale='en' AND lower(btrim(t.body))=lower(btrim(c.fact_en))) OR
+                        (t.locale='fil' AND lower(btrim(t.body))=lower(btrim(c.fact_fil)))))) AS fact_exists
             FROM starter_content_catalog c
             WHERE c.active=TRUE
               AND NOT EXISTS (
                 SELECT 1 FROM content_fact f
-                WHERE f.canonical_key=c.content_key
+                WHERE (f.canonical_key=c.content_key
                    OR EXISTS (
                      SELECT 1 FROM content_fact_translation t
                      WHERE t.fact_id=f.id AND (
                        (t.locale='en' AND lower(btrim(t.body))=lower(btrim(c.fact_en))) OR
                        (t.locale='fil' AND lower(btrim(t.body))=lower(btrim(c.fact_fil)))
                      )
-                   )
+                   ))
+                  AND EXISTS (
+                    SELECT 1 FROM quiz_question q
+                    JOIN quiz_question_translation qt ON qt.question_id=q.id AND qt.locale='en'
+                    WHERE q.fact_id=f.id AND qt.prompt=c.quiz_en
+                  )
               )
             ORDER BY c.category,c.title
             """,(rs,i)->Map.<String,Object>ofEntries(
@@ -51,7 +60,9 @@ public class AdminSeedCatalogController {
                 Map.entry("grade",rs.getInt(5)),Map.entry("emoji",rs.getString(6)),
                 Map.entry("factEn",rs.getString(7)),Map.entry("factFil",rs.getString(8)),
                 Map.entry("sourceTitle",rs.getString(9)),Map.entry("quizEn",rs.getString(10)),
-                Map.entry("quizFil",rs.getString(11)))));
+                Map.entry("quizFil",rs.getString(11)),Map.entry("explanationEn",rs.getString(12)),
+                Map.entry("explanationFil",rs.getString(13)),Map.entry("options",readOptions(rs.getString(14))),
+                Map.entry("factExists",rs.getBoolean(15)))));
     }
 
     public record SeedRequest(List<String> ids) {}
@@ -76,7 +87,15 @@ public class AdminSeedCatalogController {
                   rs.getString(10),rs.getString(11),rs.getString(12),rs.getString(13)),key);
             if(rows.isEmpty())throw AdminContentController.bad("Unknown starter catalog item");
             CatalogItem item=rows.get(0);
-            Long factId=jdbc.query("SELECT id FROM content_fact WHERE canonical_key=?",(rs,i)->rs.getLong(1),item.key())
+            Long factId=jdbc.query("""
+                SELECT f.id FROM content_fact f
+                WHERE f.canonical_key=?
+                   OR EXISTS (SELECT 1 FROM content_fact_translation t WHERE t.fact_id=f.id AND
+                     ((t.locale='en' AND lower(btrim(t.body))=lower(btrim(?))) OR
+                      (t.locale='fil' AND lower(btrim(t.body))=lower(btrim(?)))))
+                ORDER BY CASE WHEN f.canonical_key=? THEN 0 ELSE 1 END,f.id
+                LIMIT 1
+                """,(rs,i)->rs.getLong(1),item.key(),item.factEn(),item.factFil(),item.key())
                 .stream().findFirst().orElse(null);
             if(factId==null) {
                 factId=jdbc.queryForObject("""
@@ -92,7 +111,11 @@ public class AdminSeedCatalogController {
                 access.audit(actor,"SEED","FACT",factId);facts++;
             }
             Long linkedFactId=factId;
-            if(jdbc.queryForObject("SELECT count(*) FROM quiz_question WHERE fact_id=?",Integer.class,linkedFactId)>0) {
+            if(jdbc.queryForObject("""
+                SELECT count(*) FROM quiz_question q
+                JOIN quiz_question_translation t ON t.question_id=q.id AND t.locale='en'
+                WHERE q.fact_id=? AND t.prompt=?
+                """,Integer.class,linkedFactId,item.quizEn())>0) {
                 skipped++;continue;
             }
             Long questionId=jdbc.queryForObject("INSERT INTO quiz_question(fact_id,status,created_by) VALUES (?,'DRAFT',?) RETURNING id",
@@ -118,4 +141,17 @@ public class AdminSeedCatalogController {
 
     private record CatalogItem(String key,String subject,String emoji,int grade,String factEn,String factFil,
       String sourceTitle,String sourceUrl,String quizEn,String quizFil,String explanationEn,String explanationFil,String options) {}
+
+    private List<Map<String,Object>> readOptions(String options) {
+        try {
+            JsonNode parsed=mapper.readTree(options);
+            List<Map<String,Object>> result=new ArrayList<>();
+            for(JsonNode option:parsed) result.add(Map.of(
+                "en",option.path("en").asText(),"fil",option.path("fil").asText(),
+                "correct",option.path("correct").asBoolean()));
+            return result;
+        } catch(Exception e) {
+            throw new IllegalStateException("Starter catalog options are invalid",e);
+        }
+    }
 }
