@@ -3,7 +3,7 @@ import {createPortal} from 'react-dom';
 import GuestBackup from './components/GuestBackup';
 import AccountSignIn from './components/AccountSignIn';
 import {contentApi} from './lib/contentApi';
-import type {ApiFact,ApiQuestion} from './lib/contentApi';
+import type {ApiFact,ApiQuestion,ContentFilter,Page} from './lib/contentApi';
 import {sampleFacts} from './data/sample';
 import {sampleQuizFil} from './data/sampleQuizFil';
 import {chooseQuestions,createQuiz,shuffled} from './lib/quiz';
@@ -27,6 +27,13 @@ function today(){return new Date().toLocaleDateString('en-CA');}
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d.toLocaleDateString('en-CA');}
 type Play={kind:'sample'|'api';type:string;items:QuizItem[];apiItems:ApiQuestion[];index:number;score:number;correct:number|null;pick:number|null;busy:boolean;historyIds:number[];feedback:string;hidden:number[];lifelineUsed:boolean;wrongIds:number[];mistakes:MistakeRecord[]};
 type InstallPromptEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:'accepted'|'dismissed';platform:string}>};
+async function loadAllContentPages<T>(fetchPage:(offset:number)=>Promise<Page<T>>):Promise<T[]>{
+ const first=await fetchPage(0);
+ const offsets:number[]=[];
+ for(let offset=first.offset+first.items.length;offset<first.total;offset+=first.limit)offsets.push(offset);
+ const remaining=await Promise.all(offsets.map(fetchPage));
+ return [first,...remaining].flatMap(page=>page.items);
+}
 const Nav=({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void})=><button className={active?'active':''} onClick={onClick} aria-current={active?'page':undefined}><span>{icon}</span><small>{label}</small></button>;
 export default function App(){
  const [prefs,setPrefs]=useState<Preferences>(load);
@@ -85,9 +92,12 @@ export default function App(){
   if(!mode)return;
   const controller=new AbortController();
   setApiStatus('loading');
-  const filter={mode,grade:mode==='student'&&prefs.grade!=='all'?Number(prefs.grade):undefined,subject:prefs.subject!=='all'?prefs.subject:undefined,limit:100};
-  Promise.all([contentApi.facts(filter,controller.signal),contentApi.questions(filter,controller.signal)])
-   .then(([facts,qs])=>{if(!controller.signal.aborted){setPublished(facts.items);setQuestions(qs.items);setApiStatus('ready');}})
+  const filter:ContentFilter={mode,grade:mode==='student'&&prefs.grade!=='all'?Number(prefs.grade):undefined,subject:prefs.subject!=='all'?prefs.subject:undefined,limit:100};
+  Promise.all([
+   loadAllContentPages(offset=>contentApi.facts({...filter,offset},controller.signal)),
+   loadAllContentPages(offset=>contentApi.questions({...filter,offset},controller.signal))
+  ])
+   .then(([facts,qs])=>{if(!controller.signal.aborted){setPublished(facts);setQuestions(qs);setApiStatus('ready');}})
    .catch(()=>{if(!controller.signal.aborted){setPublished([]);setQuestions([]);setApiStatus('offline');}});
   return ()=>controller.abort();
  },[mode,prefs.grade,prefs.subject,apiAttempt]);
