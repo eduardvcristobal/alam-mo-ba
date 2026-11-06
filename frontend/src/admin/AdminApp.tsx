@@ -17,6 +17,15 @@ const tabs:{id:View;icon:string;title:string;subtitle:string}[]=[
  {id:'review',icon:'✓',title:'Review Queue',subtitle:'Approval and publishing'},
  {id:'access',icon:'♙',title:'Access & Roles',subtitle:'Manage platform operator access'}
 ];
+async function loadAllPages<T>(fetchPage:(limit:number,offset:number)=>Promise<T[]>):Promise<T[]>{
+ const pageSize=100;
+ const all:T[]=[];
+ for(let offset=0;;offset+=pageSize){
+  const page=await fetchPage(pageSize,offset);
+  all.push(...page);
+  if(page.length<pageSize)return all;
+ }
+}
 export default function AdminApp(){
  const [me,setMe]=useState<AdminMe|null>(null);
  const [view,setView]=useState<View>('dashboard');
@@ -64,7 +73,7 @@ export default function AdminApp(){
  const allowed=(...r:string[])=>roles.includes('SUPER_ADMIN')||r.some(role=>roles.includes(role as typeof roles[number]));
  const refresh=useCallback(async()=>{
   const [overview,factRows,questionRows,review]=await Promise.all([
-   adminApi.overview(),adminApi.facts(),adminApi.questions(),
+   adminApi.overview(),loadAllPages(adminApi.facts),loadAllPages(adminApi.questions),
    adminApi.queue().catch(()=>[] as QueueEntry[])
   ]);
   setStats(overview);setFacts(factRows);setQuestions(questionRows);setQueue(review);

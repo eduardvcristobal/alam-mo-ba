@@ -37,8 +37,8 @@ const json=(method:'POST'|'PUT',data:unknown):RequestInit=>({method,body:JSON.st
 export const adminApi={
  me:()=>adminRequest<AdminMe>('/me'),
  overview:()=>adminRequest<Overview>('/overview'),
- facts:()=>adminRequest<Fact[]>('/facts'),
- questions:()=>adminRequest<QuestionSummary[]>('/questions'),
+ facts:(limit=100,offset=0)=>adminRequest<Fact[]>(`/facts?limit=${limit}&offset=${offset}`),
+ questions:(limit=100,offset=0)=>adminRequest<QuestionSummary[]>(`/questions?limit=${limit}&offset=${offset}`),
  question:(id:number)=>adminRequest<Record<string,unknown>>('/questions/'+id),
  queue:()=>adminRequest<QueueEntry[]>('/workflow/queue'),
  roleAccounts:()=>adminRequest<ManagedAccount[]>('/roles/accounts'),
