@@ -26,6 +26,7 @@ function load():Preferences{try{const v=JSON.parse(localStorage.getItem(storage)
 function today(){return new Date().toLocaleDateString('en-CA');}
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d.toLocaleDateString('en-CA');}
 type Play={kind:'sample'|'api';type:string;items:QuizItem[];apiItems:ApiQuestion[];index:number;score:number;correct:number|null;pick:number|null;busy:boolean;historyIds:number[];feedback:string;hidden:number[];lifelineUsed:boolean;wrongIds:number[];mistakes:MistakeRecord[]};
+type InstallPromptEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:'accepted'|'dismissed';platform:string}>};
 const Nav=({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void})=><button className={active?'active':''} onClick={onClick} aria-current={active?'page':undefined}><span>{icon}</span><small>{label}</small></button>;
 export default function App(){
  const [prefs,setPrefs]=useState<Preferences>(load);
@@ -46,7 +47,18 @@ export default function App(){
  const [leaderboardError,setLeaderboardError]=useState('');
  const [leaderboardLoading,setLeaderboardLoading]=useState(false);
  const [leaderboardAttempt,setLeaderboardAttempt]=useState(0);
+ const [installPrompt,setInstallPrompt]=useState<InstallPromptEvent|null>(null);
+ const [isInstalled,setIsInstalled]=useState(()=>window.matchMedia('(display-mode: standalone)').matches||Boolean((navigator as Navigator&{standalone?:boolean}).standalone));
+ const [installHelpOpen,setInstallHelpOpen]=useState(false);
+ const [installFeedback,setInstallFeedback]=useState('');
  useEffect(()=>()=>stopQuizMusic(),[]);
+ useEffect(()=>{
+  const onBeforeInstall=(event:Event)=>{event.preventDefault();setInstallPrompt(event as InstallPromptEvent);};
+  const onInstalled=()=>{setIsInstalled(true);setInstallPrompt(null);setInstallFeedback('Alam Mo Ba? is installed on this device.');};
+  window.addEventListener('beforeinstallprompt',onBeforeInstall);
+  window.addEventListener('appinstalled',onInstalled);
+  return ()=>{window.removeEventListener('beforeinstallprompt',onBeforeInstall);window.removeEventListener('appinstalled',onInstalled);};
+ },[]);
  useEffect(()=>{
   if(!resultOpen)return;
   const previousOverflow=document.body.style.overflow;
@@ -56,6 +68,16 @@ export default function App(){
  },[resultOpen]);
  const lang=prefs.lang;
  const tr=(en:string,fil:string)=>lang==='fil'?fil:en;
+ const installApp=async()=>{
+  setInstallFeedback('');
+  if(!installPrompt){setInstallHelpOpen(true);return;}
+  try{
+   await installPrompt.prompt();
+   const choice=await installPrompt.userChoice;
+   setInstallPrompt(null);
+   if(choice.outcome==='accepted')setInstallFeedback(tr('Install started. Look for Alam Mo Ba? on your home screen.','Sinimulan ang pag-install. Hanapin ang Alam Mo Ba? sa home screen.'));
+  }catch{setInstallHelpOpen(true);}
+ };
  const update=(patch:Partial<Preferences>)=>setPrefs(p=>({...p,...patch}));
  const mode=prefs.mode;
  useEffect(()=>{localStorage.setItem(storage,JSON.stringify(prefs));document.documentElement.lang=prefs.lang==='fil'?'fil':'en';},[prefs]);
@@ -197,5 +219,5 @@ export default function App(){
   const prompt=item?.question||(remote?.translations[lang]?.prompt||remote?.translations.en?.prompt)||'';
   main=<section className="game"><div className="game-top"><button className="lifeline" disabled={play.kind!=='sample'||play.lifelineUsed||play.correct!==null} onClick={()=>setPlay(p=>{if(!p||p.kind!=='sample'||p.lifelineUsed)return p;const q=p.items[p.index];const wrong=q.choiceOrder.filter(i=>i!==q.correctIndex&&i!==p.pick);return {...p,hidden:shuffled(wrong).slice(0,Math.max(0,wrong.length-1)),lifelineUsed:true};})}>50:50</button><button type="button" className="music-control" aria-pressed={musicEnabled} onClick={toggleMusic}>{musicEnabled?'🔊':'🔇'} {tr(musicEnabled?'Audio on':'Audio off',musicEnabled?'Tunog bukas':'Tunog patay')}</button><button onClick={()=>{setResultOpen(false);stopQuizMusic();setPlay(null);}}>✕ {tr('Exit','Lumabas')}</button></div><p className="game-meta">{play.kind==='sample'&&<span className="sample-quiz-label">{tr('Sample quiz · unverified','Halimbawang quiz · hindi beripikado')}<br/></span>}{tr('Question','Tanong')} {play.index+1} / {total} · {play.score} {tr('points','puntos')}</p><div className="hex"><h2>{prompt}</h2></div>{choices.map((c,i)=><button key={i} aria-pressed={play.pick===c.original} className={'answer '+(play.pick===c.original?'picked ':'')+(play.correct!==null&&play.correct===c.original?'right ':'')+(play.correct!==null&&play.pick===c.original&&play.correct!==c.original?'wrong ':'')} disabled={play.correct!==null||play.busy} onClick={()=>{setPlay(p=>p?{...p,pick:c.original}:p);setMessage('');}}><b>{'ABCD'[i]}:</b> {c.text}</button>)}{message&&<p role="alert">{message}</p>}{play.correct!==null?<><p role="status" aria-live="polite">{play.correct===play.pick?'✅ '+tr('Correct!','Tama!'):'❌ '+tr('Not quite.','Hindi pa tama.')} {play.feedback}</p><button className="gold wide" onClick={next}>{play.index+1===total?tr('See results','Tingnan ang resulta'):tr('Next question','Susunod na tanong')}</button></>:<button className="gold wide" disabled={play.pick===null||play.busy} onClick={()=>void submit()}>{play.busy?tr('Checking…','Sinusuri…'):tr('Final answer','Pinal na sagot')}</button>}</section>;
  }
- return <div className="app"><a href="#main-content" className="skip-link">{tr('Skip to content','Tumalon sa nilalaman')}</a><header><div><h1>Alam Mo Ba?</h1><small>{mode==='student'?'🎓 Student Mode':'🌍 Explore Mode'}</small></div><button className="streak" onClick={()=>go('progress')}>🔥 {prefs.streak} {tr('days','araw')}</button></header><main className="content" id="main-content" tabIndex={-1}>{main}<div hidden={screen!=='profile'}><GuestBackup progress={prefs} onRestore={setPrefs} lang={lang}/></div></main><nav className="bottom" aria-label="Main navigation">{tabs.map(n=><Nav key={n.id} icon={n.icon} label={lang==='en'?n.en:n.fil} active={screen===n.id} onClick={()=>go(n.id)}/>)}</nav>{answerResultModal}</div>;
+ return <div className="app"><a href="#main-content" className="skip-link">{tr('Skip to content','Tumalon sa nilalaman')}</a><header><div><h1>Alam Mo Ba?</h1><small>{mode==='student'?'🎓 Student Mode':'🌍 Explore Mode'}</small></div><div className="header-actions"><button className="streak" onClick={()=>go('progress')}>🔥 {prefs.streak} {tr('days','araw')}</button><button type="button" className="install-app-button" onClick={()=>void installApp()} disabled={isInstalled}>{isInstalled?'✓ '+tr('Installed','Naka-install'):'⬇ '+tr('Install app','I-install')}</button></div></header>{installFeedback&&<p className="install-feedback" role="status">{installFeedback}</p>}<main className="content" id="main-content" tabIndex={-1}>{main}<div hidden={screen!=='profile'}><GuestBackup progress={prefs} onRestore={setPrefs} lang={lang}/></div></main><nav className="bottom" aria-label="Main navigation">{tabs.map(n=><Nav key={n.id} icon={n.icon} label={lang==='en'?n.en:n.fil} active={screen===n.id} onClick={()=>go(n.id)}/>)}</nav>{answerResultModal}{installHelpOpen&&<div className="install-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setInstallHelpOpen(false);}}><section className="install-dialog" role="dialog" aria-modal="true" aria-labelledby="install-title"><button className="install-close" aria-label={tr('Close','Isara')} onClick={()=>setInstallHelpOpen(false)}>×</button><div className="install-dialog-icon">📲</div><h2 id="install-title">{tr('Install Alam Mo Ba?','I-install ang Alam Mo Ba?')}</h2><p>{tr('Add the app to your device home screen for a full-screen experience and quick access.','Idagdag ang app sa home screen ng device para sa full-screen na paggamit at mabilis na pagbukas.')}</p><ol><li>{tr('Open your browser menu or Share menu.','Buksan ang menu ng browser o Share.')}</li><li>{tr('Choose “Install app” or “Add to Home Screen.”','Piliin ang “Install app” o “Add to Home Screen.”')}</li><li>{tr('Confirm. The app icon will appear with your other apps.','Kumpirmahin. Lalabas ang icon kasama ng iba mong app.')}</li></ol><button className="gold wide" onClick={()=>setInstallHelpOpen(false)}>{tr('Got it','Sige')}</button></section></div>}</div>;
 }
