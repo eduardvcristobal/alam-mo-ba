@@ -74,8 +74,10 @@ public class AdminSeedCatalogController {
       @RequestHeader(value=HttpHeaders.AUTHORIZATION,required=false) String bearer,
       @RequestBody SeedRequest request) {
         UUID actor=access.require(bearer,"SUPER_ADMIN","EDITOR","CONTENT_ADMIN");
-        if(request==null||request.ids()==null||request.ids().isEmpty()||request.ids().size()>250)
-            throw AdminContentController.bad("Select between 1 and 250 catalog items");
+        // The catalog now contains nearly 300 entries and the admin dialog can select
+        // all of them at once. Keep a bounded request size, but allow a full catalog batch.
+        if(request==null||request.ids()==null||request.ids().isEmpty()||request.ids().size()>500)
+            throw AdminContentController.bad("Select between 1 and 500 catalog items");
         int facts=0,quizzes=0,skipped=0;
         for(String key:request.ids().stream().distinct().toList()) {
             var rows=jdbc.query("""
