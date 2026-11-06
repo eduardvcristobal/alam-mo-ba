@@ -67,39 +67,47 @@ approved Git commit using Node.js 22, Java 17, and Maven 3.9+.
 
 ## Automated deployment script
 
-The repository includes `deploy_gce.sh` and its remote installer at
-`scripts/deploy_gce_remote.sh`. The script runs locally, builds the frontend
-and API, runs `npm test` and `mvn clean verify`, uploads the artifacts over
-IAP, installs Java/PostgreSQL/Nginx on the VM, creates or updates the local
-database role, and deploys the services. It refuses to deploy a dirty working
-tree and requires typing `DEPLOY` before changing the VM.
+The repository includes `deploy_gce.sh` and its remote release helper at
+`scripts/deploy_gce_remote.sh`. The command builds and deploys selected release
+artifacts over IAP to the already configured VM. It refuses to deploy a dirty
+working tree and requires typing `DEPLOY` before changing the VM.
 
-Before running it, complete the static IP, DNS, web firewall, IAP SSH, and
-Google OAuth setup in sections 1 and 7 below. The script does **not** modify
-Google Cloud firewall rules, static IP assignment, DNS, OAuth client settings,
-or TLS certificates. After the first successful admin bootstrap, remove
-`PLATFORM_ADMIN_EMAIL` from `/etc/alammoba/api.env`; for later deployments,
-omit `--admin-email` so it remains empty.
+The target VM must already have a deployed release, `/etc/alammoba/api.env`,
+the API systemd service, and the Nginx site config. The script does **not**
+modify Google Cloud firewall rules, static IP assignment, DNS, OAuth client
+settings, database credentials, or TLS certificates.
 
-From the repository root, after committing the release:
+From the repository root, after committing the release, choose one component or
+deploy both (the default):
 
 ```sh
-./deploy_gce.sh \
-  --domain YOUR_DOMAIN
+./deploy_gce.sh --domain YOUR_DOMAIN --component frontend
+./deploy_gce.sh --domain YOUR_DOMAIN --component backend
+./deploy_gce.sh --domain YOUR_DOMAIN --component both
 ```
 
-The script reads the Google client ID and bootstrap email from the local
-frontend/backend `.env` files if those flags are omitted. You can explicitly
-pass `--google-client-id CLIENT_ID` and `--admin-email EMAIL` to override them.
-Pass `--no-admin-bootstrap` on later deployments after removing the bootstrap
-email, so the script leaves `PLATFORM_ADMIN_EMAIL` empty. The script prompts
-for the PostgreSQL password; if left blank it generates one and stores it
-only in the root-only server environment file without printing it. The script sets the API to listen on
-localhost and suppresses Spring error messages in production.
+`frontend` runs `npm ci`, `npm test`, and a production Vite build, then updates
+the active frontend without restarting Spring Boot. `backend` runs
+`mvn clean verify`, then updates the API while leaving the frontend unchanged.
+`both` runs both build gates and deploys both artifacts in one release. Omitting
+`--component` is equivalent to `--component both`.
 
-The script deploys HTTP first. Once DNS points to the VM and inbound TCP 80/443
-is enabled, connect to the VM and run the Certbot commands in section 6 to
-enable HTTPS. Do not send learners to the site before that HTTPS check passes.
+All modes retain the previous release for rollback, preserve the database and
+its credentials, and leave the existing Nginx and TLS configuration untouched.
+The remote helper verifies HTTPS through the local origin and checks API health;
+it restores the previous active release if a check fails. A Google client ID
+change requires `--component both`, which builds the frontend and updates the
+backend audience together.
+
+The script reads `APP_GOOGLE_CLIENT_ID` (or `GOOGLE_CLIENT_ID`) from the
+repository-root `.env` if `--google-client-id` is omitted. It injects this same
+ID into the frontend's admin and learner sign-in settings and the backend
+environment; frontend `.env` and `.env.admin` files do not choose the production
+OAuth client. If you pass `--google-client-id CLIENT_ID`, it must match the
+backend client ID. Regular deployments leave `PLATFORM_ADMIN_EMAIL` and all
+other API environment settings unchanged. This release script assumes initial
+VM, database, Nginx, and TLS setup has already been completed using the
+sections below.
 
 ## 1. Prepare the VM network and DNS
 

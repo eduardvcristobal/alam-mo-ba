@@ -1,151 +1,151 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-STAGE_DIR="${1:?Usage: deploy_remote.sh STAGE_DIR DOMAIN}"
-DOMAIN="${2:?Usage: deploy_remote.sh STAGE_DIR DOMAIN}"
+STAGE_DIR="${1:?Usage: deploy_release.sh STAGE_DIR DOMAIN COMPONENT}"
+DOMAIN="${2:?Usage: deploy_release.sh STAGE_DIR DOMAIN COMPONENT}"
+COMPONENT="${3:?Usage: deploy_release.sh STAGE_DIR DOMAIN COMPONENT}"
+trap 'rm -rf "$STAGE_DIR"' EXIT
+
+exec 9>/run/lock/alammoba-deploy.lock
+flock -n 9 || { echo "Another deployment is already running." >&2; exit 1; }
+
 [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "Invalid domain." >&2; exit 2; }
-[[ -s "$STAGE_DIR/alammoba-api.jar" && -s "$STAGE_DIR/api.env" && -d "$STAGE_DIR/frontend" ]] || {
-  echo "Incomplete deployment package at $STAGE_DIR" >&2
-  exit 1
+case "$COMPONENT" in frontend|backend|both) ;; *) echo "Invalid deployment component." >&2; exit 2 ;; esac
+[[ -s "$STAGE_DIR/deploy_release.sh" ]] || { echo "Missing remote release script." >&2; exit 1; }
+if [[ "$COMPONENT" != frontend ]]; then
+  [[ -s "$STAGE_DIR/alammoba-api.jar" ]] || { echo "Backend jar is missing." >&2; exit 1; }
+fi
+if [[ "$COMPONENT" != backend ]]; then
+  [[ -s "$STAGE_DIR/frontend/index.html" ]] || { echo "Frontend build is missing." >&2; exit 1; }
+fi
+
+DOMAIN="$DOMAIN" COMPONENT="$COMPONENT" STAGE_DIR="$STAGE_DIR" bash -s <<'REMOTE'
+set -Eeuo pipefail
+
+DOMAIN="$DOMAIN"
+COMPONENT="$COMPONENT"
+STAGE_DIR="$STAGE_DIR"
+CURRENT_LINK=/opt/alammoba/current
+WEB_ROOT=/var/www/alammoba
+API_ENV=/etc/alammoba/api.env
+PREVIOUS_RELEASE="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
+ENV_BACKUP=""
+RELEASE_ID="$(date -u +%Y%m%dT%H%M%S%NZ)"
+RELEASE_DIR="/opt/alammoba/releases/$RELEASE_ID"
+
+cleanup() {
+  rm -rf "$STAGE_DIR"
+  if [[ -n "$ENV_BACKUP" ]]; then rm -f "$ENV_BACKUP"; fi
 }
-cleanup() { rm -rf "$STAGE_DIR"; }
 trap cleanup EXIT
 
-set -a
-# Values are generated/validated by deploy_gce.sh and contain no shell syntax.
-. "$STAGE_DIR/api.env"
-set +a
-[[ "$DB_PASSWORD" =~ ^[A-Za-z0-9_-]{32,}$ ]] || { echo "Invalid database password format." >&2; exit 2; }
+[[ -n "$PREVIOUS_RELEASE" && -d "$PREVIOUS_RELEASE/frontend" && -s "$PREVIOUS_RELEASE/alammoba-api.jar" ]] || {
+  echo "No complete current release found. Run the initial VM setup before component deployments." >&2
+  exit 1
+}
+[[ -f "$API_ENV" ]] || { echo "API environment file is missing; refusing to deploy." >&2; exit 1; }
+[[ -f /etc/nginx/sites-available/alammoba ]] || { echo "Nginx site config is missing; refusing to deploy." >&2; exit 1; }
+nginx -t
 
-export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y openjdk-17-jre-headless postgresql postgresql-contrib nginx rsync curl
-systemctl enable --now postgresql nginx
-
-if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='alammoba'" | grep -qx '1'; then
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'CREATE ROLE alammoba LOGIN'
+STAGED_CLIENT_ID=""
+CURRENT_CLIENT_ID="$(sed -n 's/^APP_GOOGLE_CLIENT_ID=//p' "$API_ENV" | head -n 1)"
+if [[ -z "$CURRENT_CLIENT_ID" ]]; then
+  CURRENT_CLIENT_ID="$(sed -n 's/^GOOGLE_CLIENT_ID=//p' "$API_ENV" | head -n 1)"
 fi
-sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
-ALTER ROLE alammoba WITH LOGIN PASSWORD '$DB_PASSWORD';
-SQL
-if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='alammoba'" | grep -qx '1'; then
-  sudo -u postgres createdb --owner=alammoba alammoba
-else
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'ALTER DATABASE alammoba OWNER TO alammoba'
+if [[ -s "$STAGE_DIR/google-client-id" ]]; then
+  STAGED_CLIENT_ID="$(cat "$STAGE_DIR/google-client-id")"
+  [[ "$STAGED_CLIENT_ID" =~ ^[A-Za-z0-9._:-]+$ ]] || { echo "Invalid staged Google client ID." >&2; exit 2; }
 fi
 
-install -d -o root -g root -m 0755 /opt/alammoba/releases
-RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)"
-RELEASE_DIR="/opt/alammoba/releases/$RELEASE_ID"
-PREVIOUS_RELEASE="$(readlink -f /opt/alammoba/current 2>/dev/null || true)"
-install -d -o root -g root -m 0755 "$RELEASE_DIR/frontend"
-install -o root -g root -m 0644 "$STAGE_DIR/alammoba-api.jar" "$RELEASE_DIR/alammoba-api.jar"
-rsync -a --delete "$STAGE_DIR/frontend/" "$RELEASE_DIR/frontend/"
+if [[ "$COMPONENT" == frontend && "$STAGED_CLIENT_ID" != "$CURRENT_CLIENT_ID" ]]; then
+  echo "The frontend Google client ID differs from the VM backend. Deploy both components to change it." >&2
+  exit 1
+fi
+if [[ "$COMPONENT" == backend && "$STAGED_CLIENT_ID" != "$CURRENT_CLIENT_ID" ]]; then
+  echo "The backend Google client ID differs from the current frontend. Deploy both components to change it." >&2
+  exit 1
+fi
+if [[ "$COMPONENT" == backend && -n "$CURRENT_CLIENT_ID" ]] && ! grep -R -qF -- "$CURRENT_CLIENT_ID" "$PREVIOUS_RELEASE/frontend/assets"; then
+  echo "Current frontend and backend Google client IDs do not match. Deploy both components to synchronize them." >&2
+  exit 1
+fi
+
+install -d -o root -g root -m 0755 /opt/alammoba/releases "$RELEASE_DIR/frontend"
+cp -a "$PREVIOUS_RELEASE/." "$RELEASE_DIR/"
+if [[ "$COMPONENT" != frontend ]]; then
+  install -o root -g root -m 0644 "$STAGE_DIR/alammoba-api.jar" "$RELEASE_DIR/alammoba-api.jar"
+fi
+if [[ "$COMPONENT" != backend ]]; then
+  rsync -a --delete "$STAGE_DIR/frontend/" "$RELEASE_DIR/frontend/"
+fi
 chown -R root:root "$RELEASE_DIR"
 find "$RELEASE_DIR" -type d -exec chmod 0755 {} +
 find "$RELEASE_DIR" -type f -exec chmod 0644 {} +
 
-install -d -o root -g root -m 0750 /etc/alammoba
-install -o root -g root -m 0600 "$STAGE_DIR/api.env" /etc/alammoba/api.env
-
-cat >/etc/systemd/system/alammoba-api.service <<'EOF'
-[Unit]
-Description=Alam Mo Ba API
-After=network.target postgresql.service
-Requires=postgresql.service
-
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-EnvironmentFile=/etc/alammoba/api.env
-WorkingDirectory=/opt/alammoba/current
-ExecStart=/usr/bin/java -jar /opt/alammoba/current/alammoba-api.jar
-Restart=on-failure
-RestartSec=5
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-cat >/etc/nginx/sites-available/alammoba <<EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $DOMAIN;
-    root /var/www/alammoba;
-    index index.html;
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+if [[ "$COMPONENT" != frontend && -n "$STAGED_CLIENT_ID" && "$STAGED_CLIENT_ID" != "$CURRENT_CLIENT_ID" ]]; then
+  ENV_BACKUP="$(mktemp /etc/alammoba/api.env.backup.XXXXXX)"
+  cp -a "$API_ENV" "$ENV_BACKUP"
+  ENV_TEMP="$(mktemp /etc/alammoba/api.env.XXXXXX)"
+  awk -v id="$STAGED_CLIENT_ID" '
+    BEGIN { found=0 }
+    /^(APP_GOOGLE_CLIENT_ID|GOOGLE_CLIENT_ID)=/ {
+      key=substr($0, 1, index($0, "=") - 1)
+      print key "=" id
+      found=1
+      next
     }
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-}
-EOF
-ln -sfn /etc/nginx/sites-available/alammoba /etc/nginx/sites-enabled/alammoba
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-
-if [[ -e /var/www/alammoba && ! -L /var/www/alammoba ]]; then
-  mv /var/www/alammoba "/var/www/alammoba.pre-deploy.$RELEASE_ID"
+    { print }
+    END { if (!found) print "GOOGLE_CLIENT_ID=" id }
+  ' "$API_ENV" > "$ENV_TEMP"
+  chown root:root "$ENV_TEMP"
+  chmod 0600 "$ENV_TEMP"
+  mv -f "$ENV_TEMP" "$API_ENV"
 fi
-ln -sfn "$RELEASE_DIR/frontend" /var/www/alammoba.new
-mv -Tf /var/www/alammoba.new /var/www/alammoba
-ln -sfn "$RELEASE_DIR" /opt/alammoba/current.new
-mv -Tf /opt/alammoba/current.new /opt/alammoba/current
 
-nginx -t
-systemctl daemon-reload
-systemctl enable alammoba-api
-restore_previous() {
-  echo "Deployment health check failed; restoring the previous release." >&2
-  if [[ -n "$PREVIOUS_RELEASE" && -d "$PREVIOUS_RELEASE" ]]; then
-    ln -sfn "$PREVIOUS_RELEASE/frontend" /var/www/alammoba.rollback
-    mv -Tf /var/www/alammoba.rollback /var/www/alammoba
-    ln -sfn "$PREVIOUS_RELEASE" /opt/alammoba/current.rollback
-    mv -Tf /opt/alammoba/current.rollback /opt/alammoba/current
+rollback() {
+  echo "Release verification failed; restoring the previous release." >&2
+  ln -sfn "$PREVIOUS_RELEASE" "$CURRENT_LINK.rollback"
+  mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"
+  ln -sfn "$CURRENT_LINK/frontend" "$WEB_ROOT.rollback"
+  mv -Tf "$WEB_ROOT.rollback" "$WEB_ROOT"
+  if [[ -n "$ENV_BACKUP" && -f "$ENV_BACKUP" ]]; then
+    cp -a "$ENV_BACKUP" "$API_ENV"
     systemctl restart alammoba-api || true
-    systemctl reload nginx || true
-  else
-    systemctl stop alammoba-api || true
   fi
   exit 1
 }
 
-if ! systemctl restart alammoba-api; then
-  restore_previous
-fi
-systemctl reload nginx
+ln -sfn "$RELEASE_DIR" "$CURRENT_LINK.next"
+mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"
+ln -sfn "$CURRENT_LINK/frontend" "$WEB_ROOT.next"
+mv -Tf "$WEB_ROOT.next" "$WEB_ROOT"
 
-for attempt in $(seq 1 30); do
-  if curl --fail --silent http://127.0.0.1:8080/api/v1/status >/dev/null; then
-    break
-  fi
-  if [[ "$attempt" -eq 30 ]]; then
-    journalctl -u alammoba-api -n 100 --no-pager
-    restore_previous
-  fi
-  sleep 2
-done
-
-if ! curl --fail --silent -H "Host: $DOMAIN" http://127.0.0.1/ >/dev/null; then
-  restore_previous
+if [[ "$COMPONENT" != frontend ]]; then
+  if ! systemctl restart alammoba-api; then rollback; fi
+  for attempt in $(seq 1 30); do
+    if curl --fail --silent http://127.0.0.1:8080/api/v1/status >/dev/null; then break; fi
+    if [[ "$attempt" -eq 30 ]]; then
+      journalctl -u alammoba-api -n 80 --no-pager
+      rollback
+    fi
+    sleep 2
+  done
 fi
 
-echo "Deployed release $RELEASE_ID for $DOMAIN"
-echo "API check: http://127.0.0.1:8080/api/v1/status"
-echo "Frontend root: /var/www/alammoba"
+if ! curl --fail --silent --show-error --insecure \
+  --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/v1/status" >/dev/null; then
+  rollback
+fi
+if [[ "$COMPONENT" != backend ]]; then
+  EXPECTED_JS="$(grep -oE 'assets/[^" ]+\.js' "$RELEASE_DIR/frontend/index.html" | head -n 1)"
+  [[ -n "$EXPECTED_JS" ]] || { echo "No JavaScript bundle referenced by the frontend index." >&2; rollback; }
+  if ! curl --fail --silent --show-error --insecure \
+    --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/" | grep -qF "$EXPECTED_JS"; then
+    rollback
+  fi
+fi
+
+systemctl is-active --quiet nginx
+echo "Deployed $COMPONENT release $RELEASE_ID for $DOMAIN."
+echo "Nginx/TLS and PostgreSQL configuration and credentials were preserved."
+REMOTE
