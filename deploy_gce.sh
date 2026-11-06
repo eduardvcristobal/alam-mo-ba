@@ -99,7 +99,10 @@ if [[ "$COMPONENT" != backend ]]; then
     command -v "$tool" >/dev/null || { echo "Required local command not found: $tool" >&2; exit 1; }
   done
   node_major="$(node -p 'process.versions.node.split(".")[0]')"
-  [[ "$node_major" == 22 ]] || { echo "Node.js 22 is required (found $(node --version))." >&2; exit 1; }
+  [[ "$node_major" =~ ^[0-9]+$ ]] && (( node_major >= 22 )) || {
+    echo "Node.js 22 or newer is required (found $(node --version))." >&2
+    exit 1
+  }
 fi
 if [[ "$COMPONENT" != frontend ]]; then
   for tool in java mvn; do
