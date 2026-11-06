@@ -9,9 +9,9 @@ async function read<T>(path:string,signal?:AbortSignal):Promise<T>{const r=await
 export type SubmittedAnswer={questionId:number;optionId:number};
 export type QuizResult={score:number;total:number;answers:{questionId:number;correct:boolean;correctOptionId:number;explanations:Record<string,string>}[]};
 export type QuizSubmission={mode:'student'|'explore';grade?:number;subject?:string;answers:SubmittedAnswer[]};
-export async function submitQuiz(payload:QuizSubmission,signal?:AbortSignal):Promise<QuizResult>{
+export async function submitQuiz(payload:QuizSubmission,signal?:AbortSignal,accountToken?:string):Promise<QuizResult>{
  const response=await fetch(base+'/quiz/submit',{
-   method:'POST',headers:{'Content-Type':'application/json'},
+   method:'POST',headers:{'Content-Type':'application/json',...(accountToken?{Authorization:'Bearer '+accountToken}:{})},
    body:JSON.stringify(payload),signal
  });
  if(!response.ok)throw new Error('Quiz API HTTP '+response.status);

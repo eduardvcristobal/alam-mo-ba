@@ -103,6 +103,8 @@ public class AdminLoginController {
     private UUID seedSuperAdminAccount(GoogleIdentityVerifier.VerifiedIdentity identity) {
         UUID account=UUID.randomUUID();
         jdbc.update("INSERT INTO learning_account(id) VALUES (?)",account);
+        String defaultAlias="Learner-"+account.toString().replace("-","").substring(0,16).toUpperCase(java.util.Locale.ROOT);
+        jdbc.update("INSERT INTO learning_account_profile(account_id,display_name) VALUES (?,?)",account,defaultAlias);
         jdbc.update("""
             INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at,verified_email)
             VALUES (?,'GOOGLE',?,NOW(),?)

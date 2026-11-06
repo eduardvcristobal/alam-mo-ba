@@ -9,6 +9,7 @@ import type {GuestProgress,GuestCloudState} from './guestCloud';
 const api=(import.meta.env.VITE_API_BASE_URL||'/api/v1').replace(/\/$/,'');
 const key='alam-mo-ba-account-session';
 export type AccountSession={token:string;accountId:string;expiresAt:string};
+export type AccountProfile={displayName:string};
 export const accountSession={
  get():AccountSession|null{
   try{
@@ -49,6 +50,12 @@ export async function verifyGoogleIdToken(idToken:string,nonce:string):Promise<A
 }
 export async function accountMe(token:string):Promise<{accountId:string}>{
  return parsed('/account/me',{},token);
+}
+export async function readAccountProfile(token:string):Promise<AccountProfile>{
+ return parsed('/account/profile',{},token);
+}
+export async function updateAccountProfile(token:string,displayName:string):Promise<AccountProfile>{
+ return parsed('/account/profile',{method:'PUT',body:JSON.stringify({displayName})},token);
 }
 export async function readAccountProgress(token:string):Promise<GuestCloudState>{
  return parsed('/account/progress',{},token);

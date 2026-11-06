@@ -6,8 +6,8 @@
 .skip-link{position:absolute;left:16px;top:-100px;z-index:1000;background:var(--gold);color:#16204f;border-radius:12px;padding:12px 18px;font-weight:750}
 .skip-link:focus{top:8px}
 .game-top .music-control{border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:7px 10px;font-size:12px;white-space:nowrap}
-.answer-result-backdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(4,8,31,.68);animation:result-fade-in .18s ease-out}
-.answer-result{position:relative;width:min(100%,360px);overflow:hidden;border:2px solid rgba(255,255,255,.5);border-radius:26px;padding:28px 24px 24px;text-align:center;color:#fff;box-shadow:0 20px 70px rgba(0,0,0,.35);animation:result-pop-in .28s cubic-bezier(.2,1.4,.4,1)}
+.answer-result-backdrop{position:fixed;inset:0;z-index:999;display:grid;place-items:center;overflow-y:auto;overscroll-behavior:contain;padding:16px;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom));background:rgba(4,8,31,.68);animation:result-fade-in .18s ease-out}
+.answer-result{position:relative;width:min(100%,420px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;border:2px solid rgba(255,255,255,.5);border-radius:26px;padding:28px 24px 24px;text-align:center;color:#fff;box-shadow:0 20px 70px rgba(0,0,0,.35);animation:result-pop-in .28s cubic-bezier(.2,1.4,.4,1)}
 .answer-result.is-correct{background:linear-gradient(145deg,#168a58,#075638)}.answer-result.is-wrong{background:linear-gradient(145deg,#33416d,#172249)}
 .answer-result h2{margin:8px 0;font-size:29px}.answer-result p{margin:8px 0 16px}.answer-result small{color:rgba(255,255,255,.8)}
 .answer-result-close{position:absolute;top:10px;right:10px;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:26px;line-height:1}
@@ -15,4 +15,22 @@
 .result-wrong-art{font-size:64px;height:88px;display:grid;place-items:center;animation:wrong-wobble .55s ease-in-out 2}
 @keyframes result-fade-in{from{opacity:0}to{opacity:1}}@keyframes result-pop-in{from{opacity:0;transform:translateY(16px) scale(.84)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes balloon-float{from{transform:translateY(5px) rotate(-8deg)}to{transform:translateY(-12px) rotate(8deg)}}@keyframes celebrate-spin{from{transform:rotate(-12deg) scale(.9)}to{transform:rotate(12deg) scale(1.13)}}@keyframes wrong-wobble{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg) translateX(-3px)}75%{transform:rotate(9deg) translateX(3px)}}
 @media(prefers-reduced-motion:reduce){.answer-result-backdrop,.answer-result,.result-balloons span,.result-wrong-art{animation:none!important}}
+.bottom{grid-template-columns:repeat(6,minmax(0,1fr))}.bottom button{min-width:0}.bottom button small{font-size:10px}
+.leaderboard-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center}.leaderboard-summary>div{display:grid;gap:4px}.leaderboard-summary strong{font-family:"Baloo 2",system-ui,sans-serif;font-size:28px}.leaderboard-list h3{margin-bottom:12px}.leaderboard-row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;padding:12px 2px;border-top:1px solid var(--line)}.leaderboard-row:first-of-type{border-top:0}.leaderboard-row>strong{font-size:14px}.leaderboard-row>strong small{font-size:11px}.leaderboard-row>span:last-child{font-weight:750;white-space:nowrap}.leaderboard-rank{text-align:center;font-weight:750}.leaderboard-row.is-you{margin:0 -8px;padding:12px 8px;border-radius:10px;background:color-mix(in srgb,var(--blue) 9%,var(--card))}.leaderboard-privacy{font-size:12px;text-align:center}
+.alias-label{display:block;margin:12px 0 6px;font-weight:700}.alias-input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink)}.alias-hint{font-size:12px!important;margin:6px 0 10px!important}.settings button.alias-save{width:auto;border:0;border-radius:11px;background:var(--blue);color:#fff;padding:11px 14px}.alias-success{color:var(--ok);font-size:13px}
+@media(max-width:360px){.bottom{gap:0}.bottom button{padding-inline:0}.bottom button small{font-size:9px}}
+/* Tablet layout: use the wider canvas while keeping learner controls touch-friendly. */
+@media(min-width:700px) and (max-width:1100px){
+ .app{max-width:960px;padding-inline:clamp(26px,5vw,52px)}
+ header{padding:22px 0 18px}header h1{font-size:30px}header small{font-size:16px}
+ .content,.bottom{max-width:880px;width:100%;align-self:center}
+ .content{padding-bottom:18px}
+ .filters{max-width:760px;gap:12px;margin:8px 0 20px}.filters select,.filters button{min-height:52px;padding:12px 16px}
+ .hero{padding:30px;border-radius:26px}.hero p{font-size:26px;line-height:1.45}
+ .panel{padding:24px;margin:16px 0}
+ .fact-item{padding:20px;gap:18px}.fact-item p{font-size:17px}
+ .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.stats .panel{padding:18px 14px}.stats b{font-size:30px}
+ .game{max-width:780px;margin-inline:auto;padding:24px}.hex h2{font-size:25px}.answer{font-size:18px;padding:18px 32px}
+ .bottom{gap:8px;padding-top:12px}.bottom button{padding:10px 6px}.bottom button span{font-size:24px}.bottom button small{font-size:12px}
+}
 .mistake-card h3{margin:12px 0}.mistake-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;color:var(--mute);font-size:13px}.mistake-options{display:grid;gap:7px}.mistake-option{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px}.mistake-option.is-answer{border-color:#2b9a68;background:#e5f7ed;color:#145a3c}.mistake-option.was-selected:not(.is-answer){border-color:#d45b61;background:#fff0f0;color:#812c35}.mistake-option b{font-size:11px;white-space:nowrap}.mistake-explanation{padding:11px 12px;border-radius:10px;background:color-mix(in srgb,var(--blue) 8%,var(--card));margin-bottom:0}

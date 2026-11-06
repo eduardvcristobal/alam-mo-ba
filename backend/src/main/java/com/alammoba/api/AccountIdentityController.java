@@ -76,6 +76,8 @@ public class AccountIdentityController {
         if(accounts.isEmpty()) {
             accountId=UUID.randomUUID();
             jdbc.update("INSERT INTO learning_account(id) VALUES (?)",accountId);
+            String defaultAlias="Learner-"+accountId.toString().replace("-","").substring(0,16).toUpperCase(java.util.Locale.ROOT);
+            jdbc.update("INSERT INTO learning_account_profile(account_id,display_name) VALUES (?,?)",accountId,defaultAlias);
             jdbc.update("""
                 INSERT INTO learning_account_identity(account_id,provider,provider_subject,verified_at,verified_email)
                 VALUES (?,'GOOGLE',?,NOW(),?)
